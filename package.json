@@ -1,0 +1,13 @@
+{
+  "name": "bakery-order-management-system",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Modern bakery ordering platform with React frontend and Express backend.",
+  "scripts": {
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "start:backend": "npm --prefix backend run start",
+    "build:frontend": "npm --prefix frontend run build",
+    "test:backend": "npm --prefix backend run test"
+  }
+}
