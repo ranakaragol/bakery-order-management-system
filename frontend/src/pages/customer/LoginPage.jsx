@@ -1,12 +1,16 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login, loading } = useAuth();
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
+  const nextPath = searchParams.get("next");
+  const intent = searchParams.get("intent");
+  const registerLink = `/register${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -14,7 +18,12 @@ const LoginPage = () => {
 
     try {
       const { user } = await login(form);
-      navigate(user.role === "admin" ? "/admin/dashboard" : "/");
+      if (user.role === "admin") {
+        navigate("/admin/dashboard");
+        return;
+      }
+
+      navigate(nextPath || "/");
     } catch (requestError) {
       setError(requestError.response?.data?.message || "Giris yapilamadi.");
     }
@@ -23,8 +32,13 @@ const LoginPage = () => {
   return (
     <section className="auth-shell">
       <form className="auth-card" onSubmit={handleSubmit}>
-        <span className="eyebrow">Musteri Girisi</span>
-        <h1>Hesabiniza girin</h1>
+        <span className="eyebrow">Tek Giris</span>
+        <h1>Hesabiniza veya yonetim paneline girin</h1>
+        {intent === "cart" && (
+          <div className="info-banner">
+            Sepete urun eklemek icin once giris yapmaniz veya yeni hesap olusturmaniz gerekiyor.
+          </div>
+        )}
         <input
           type="email"
           placeholder="E-posta"
@@ -44,10 +58,7 @@ const LoginPage = () => {
           Giris Yap
         </button>
         <p>
-          Hesabiniz yok mu? <Link to="/register">Kayit olun</Link>
-        </p>
-        <p>
-          Yonetici misiniz? <Link to="/admin/login">Admin girisine gidin</Link>
+          Hesabiniz yok mu? <Link to={registerLink}>Kayit olun</Link>
         </p>
       </form>
     </section>

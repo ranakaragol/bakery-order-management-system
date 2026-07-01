@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
 const initialForm = {
@@ -9,39 +9,22 @@ const initialForm = {
   password: "",
   confirmPassword: "",
   phone: "",
-  address: "",
-  invoiceInfo: {
-    fullName: "",
-    companyName: "",
-    taxNumber: "",
-    taxOffice: "",
-    identityNumber: "",
-    billingAddress: "",
-    phone: "",
-    email: ""
-  }
+  address: ""
 };
 
 const RegisterPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { register, loading } = useAuth();
   const [form, setForm] = useState(initialForm);
   const [error, setError] = useState("");
+  const nextPath = searchParams.get("next");
+  const intent = searchParams.get("intent");
+  const loginLink = `/login${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
-  };
-
-  const handleInvoiceChange = (event) => {
-    const { name, value } = event.target;
-    setForm((current) => ({
-      ...current,
-      invoiceInfo: {
-        ...current.invoiceInfo,
-        [name]: value
-      }
-    }));
   };
 
   const handleSubmit = async (event) => {
@@ -60,14 +43,9 @@ const RegisterPage = () => {
         email: form.email,
         password: form.password,
         phone: form.phone,
-        address: form.address,
-        invoiceInfo: {
-          ...form.invoiceInfo,
-          email: form.invoiceInfo.email || form.email,
-          phone: form.invoiceInfo.phone || form.phone
-        }
+        address: form.address
       });
-      navigate("/");
+      navigate(nextPath || "/");
     } catch (requestError) {
       setError(requestError.response?.data?.message || "Kayit islemi tamamlanamadi.");
     }
@@ -78,6 +56,14 @@ const RegisterPage = () => {
       <form className="auth-card auth-card--wide" onSubmit={handleSubmit}>
         <span className="eyebrow">Yeni Uyelik</span>
         <h1>Musteri hesabi olusturun</h1>
+        <div className="info-banner">
+          Fatura bilgileri bu asamada alinmiyor. Ilk siparisinizi olustururken gerekli alanlari doldurabilirsiniz.
+        </div>
+        {intent === "cart" && (
+          <div className="helper-text helper-text--panel">
+            Hesabinizi olusturduktan sonra urun detayina donup sepete eklemeye devam edebilirsiniz.
+          </div>
+        )}
         <div className="form-grid">
           <input name="firstName" placeholder="Ad" required value={form.firstName} onChange={handleChange} />
           <input name="lastName" placeholder="Soyad" required value={form.lastName} onChange={handleChange} />
@@ -107,58 +93,13 @@ const RegisterPage = () => {
           value={form.address}
           onChange={handleChange}
         />
-        <h2>Fatura Bilgileri</h2>
-        <div className="form-grid">
-          <input
-            name="fullName"
-            placeholder="Fatura Unvani / Ad Soyad"
-            required
-            value={form.invoiceInfo.fullName}
-            onChange={handleInvoiceChange}
-          />
-          <input
-            name="companyName"
-            placeholder="Sirket Adi"
-            value={form.invoiceInfo.companyName}
-            onChange={handleInvoiceChange}
-          />
-          <input
-            name="taxNumber"
-            placeholder="Vergi Numarasi"
-            value={form.invoiceInfo.taxNumber}
-            onChange={handleInvoiceChange}
-          />
-          <input
-            name="taxOffice"
-            placeholder="Vergi Dairesi"
-            value={form.invoiceInfo.taxOffice}
-            onChange={handleInvoiceChange}
-          />
-          <input
-            name="identityNumber"
-            placeholder="TCKN"
-            value={form.invoiceInfo.identityNumber}
-            onChange={handleInvoiceChange}
-          />
-          <input
-            name="email"
-            type="email"
-            placeholder="Fatura E-postasi"
-            value={form.invoiceInfo.email}
-            onChange={handleInvoiceChange}
-          />
-        </div>
-        <textarea
-          name="billingAddress"
-          placeholder="Fatura adresi"
-          required
-          value={form.invoiceInfo.billingAddress}
-          onChange={handleInvoiceChange}
-        />
         {error && <p className="error-text">{error}</p>}
         <button type="submit" className="primary-button" disabled={loading}>
           Hesap Olustur
         </button>
+        <p>
+          Zaten hesabiniz var mi? <Link to={loginLink}>Giris yapin</Link>
+        </p>
       </form>
     </section>
   );

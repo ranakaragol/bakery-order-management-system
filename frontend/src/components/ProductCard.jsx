@@ -20,7 +20,7 @@ const ProductCard = ({ product, onAddToCart, disableCart }) => (
           type="button"
           className="primary-button"
           disabled={disableCart || product.stockStatus === "out_of_stock"}
-          onClick={() => onAddToCart?.(product._id)}
+          onClick={() => onAddToCart?.(product)}
         >
           Sepete Ekle
         </button>

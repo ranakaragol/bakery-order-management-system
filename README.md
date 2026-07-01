@@ -72,7 +72,8 @@ bakery-order-management-system/
 ### Musteri
 
 - Kayit olur ve giris yapar
-- Fatura bilgileriyle uyelik olusturur
+- Uyelikte temel hesap ve teslimat bilgilerini girer
+- Fatura bilgilerini siparis olusturma adiminda doldurur
 - Urun detaylarini gorur
 - Sepete urun ekler
 - Sepet gunceller
@@ -81,7 +82,7 @@ bakery-order-management-system/
 
 ### Yonetici
 
-- Ayrı admin ekranindan giris yapar
+- Tek giris ekranindan admin hesabi ile giris yapar
 - Siparisleri listeler
 - Siparis durumunu gunceller
 - Musteri ve fatura bilgilerini gorur
@@ -175,11 +176,53 @@ Varsayilan baglanti:
 MONGO_URI=mongodb://127.0.0.1:27017/bakery_order_management
 ```
 
+### 3A. Docker ile MongoDB baslat
+
+Projede Docker ile kullanima hazir bir [docker-compose.yml](/Users/ranakaragol/Desktop/bakery-management/bakery-order-management-system/docker-compose.yml:1) dosyasi bulunur.
+
+MongoDB ve yonetim arayuzunu baslatmak icin:
+
+```bash
+docker compose up -d
+```
+
+Sadece MongoDB baslatmak isterseniz:
+
+```bash
+docker compose up -d mongo
+```
+
+Durumu kontrol etmek icin:
+
+```bash
+docker compose ps
+```
+
+MongoDB'yi durdurmak icin:
+
+```bash
+docker compose down
+```
+
+Veriyi silmeden yeniden baslatmak icin sadece `down` veya `up -d` kullanin. Veritabani verileri `mongo_data` volume icinde saklanir.
+
+Mongo arayuzu isterseniz:
+
+- MongoDB: `mongodb://127.0.0.1:27017`
+- Mongo Express: `http://localhost:8081`
+
 ### 4. Ornek veri ve admin hesabi yukle
 
 ```bash
 cd backend
 npm run seed
+```
+
+Sadece admin kullanicisini eklemek veya guncellemek icin:
+
+```bash
+cd backend
+npm run seed:admin
 ```
 
 Varsayilan admin:
@@ -204,6 +247,39 @@ npm run dev
 ```
 
 Frontend varsayilan olarak `http://localhost:5173`, backend ise `http://localhost:5000` uzerinden calisir.
+
+## Docker Ile Tam Yerel Kurulum
+
+1. Docker Desktop'i acin.
+2. Repo kokunde `docker compose up -d` calistirin.
+3. `backend/.env` icinde `MONGO_URI=mongodb://127.0.0.1:27017/bakery_order_management` oldugunu kontrol edin.
+4. Backend'i baslatin:
+
+```bash
+cd backend
+npm run dev
+```
+
+5. Frontend'i baslatin:
+
+```bash
+cd frontend
+npm run dev
+```
+
+6. Ornek veri gerekiyorsa:
+
+```bash
+cd backend
+npm run seed
+```
+
+7. Sadece admin kaydi gerekiyorsa:
+
+```bash
+cd backend
+npm run seed:admin
+```
 
 ## Test
 

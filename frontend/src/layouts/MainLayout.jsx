@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import api from "../api/client";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
+import { fallbackContactInfo } from "../utils/fallbackContent";
 
 const MainLayout = () => {
   const [contactInfo, setContactInfo] = useState(null);
@@ -11,7 +12,7 @@ const MainLayout = () => {
     api
       .get("/public/contact")
       .then(({ data }) => setContactInfo(data))
-      .catch(() => setContactInfo(null));
+      .catch(() => setContactInfo(fallbackContactInfo));
   }, []);
 
   return (

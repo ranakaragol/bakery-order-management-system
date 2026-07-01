@@ -1,20 +1,41 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import api from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
+import { fallbackProducts } from "../../utils/fallbackContent";
 import { formatCurrency, stockLabels } from "../../utils/formatters";
 
 const ProductDetailPage = () => {
   const { id } = useParams();
   const { user } = useAuth();
   const { addToCart } = useCart();
+  const navigate = useNavigate();
   const [product, setProduct] = useState(null);
   const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
-    api.get(`/products/${id}`).then(({ data }) => setProduct(data));
+    api
+      .get(`/products/${id}`)
+      .then(({ data }) => setProduct(data))
+      .catch(() => {
+        const fallbackProduct = fallbackProducts.find((item) => item._id === id);
+        setProduct(fallbackProduct || null);
+      });
   }, [id]);
+
+  const handleAddToCart = async () => {
+    if (!user) {
+      navigate(`/login?next=/products/${product._id}&intent=cart`);
+      return;
+    }
+
+    if (user.role !== "customer") {
+      return;
+    }
+
+    await addToCart(product._id, quantity);
+  };
 
   if (!product) {
     return <div className="panel">Urun yukleniyor...</div>;
@@ -32,7 +53,7 @@ const ProductDetailPage = () => {
           <span>{stockLabels[product.stockStatus]}</span>
         </div>
 
-        {user?.role === "customer" ? (
+        {user?.role !== "admin" ? (
           <div className="quantity-box">
             <label htmlFor="quantity">Adet</label>
             <input
@@ -45,14 +66,19 @@ const ProductDetailPage = () => {
             <button
               type="button"
               className="primary-button"
-              onClick={() => addToCart(product._id, quantity)}
+              onClick={handleAddToCart}
             >
               Sepete Ekle
             </button>
+            {!user && (
+              <p className="helper-text">
+                Sepete devam etmek icin giris veya kayit adimina yonlendirilirsiniz.
+              </p>
+            )}
           </div>
         ) : (
           <div className="panel">
-            Sepete eklemek ve siparis olusturmak icin <Link to="/login">giris yapin</Link>.
+            Admin hesaplari siparis vermez. Musteri akisini test etmek icin musteri girisi kullanin.
           </div>
         )}
       </div>

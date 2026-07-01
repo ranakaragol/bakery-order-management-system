@@ -5,19 +5,13 @@ import { generateToken } from "../utils/generateToken.js";
 import { sanitizeUser } from "../utils/sanitizeUser.js";
 
 export const register = asyncHandler(async (req, res) => {
-  const { firstName, lastName, email, password, phone, address, invoiceInfo } = req.body;
+  const { firstName, lastName, email, password, phone, address } = req.body;
 
   const existingUser = await User.findOne({ email });
 
   if (existingUser) {
     return res.status(409).json({ message: "A user with this email already exists." });
   }
-
-  const savedInvoiceInfo = await InvoiceInfo.create({
-    ...invoiceInfo,
-    email: invoiceInfo.email || email,
-    phone: invoiceInfo.phone || phone
-  });
 
   const user = await User.create({
     firstName,
@@ -26,12 +20,8 @@ export const register = asyncHandler(async (req, res) => {
     password,
     phone,
     address,
-    role: "customer",
-    invoiceInfo: savedInvoiceInfo._id
+    role: "customer"
   });
-
-  savedInvoiceInfo.user = user._id;
-  await savedInvoiceInfo.save();
 
   const populatedUser = await User.findById(user._id).populate("invoiceInfo");
 

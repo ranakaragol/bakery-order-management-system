@@ -70,6 +70,9 @@ const CheckoutPage = () => {
           <span className="eyebrow">Odeme</span>
           <h1>Siparisi tamamla</h1>
         </div>
+        <div className="info-banner">
+          Fatura bilgileri ilk siparis asamasinda alinir ve sonraki siparisleriniz icin hesabinizda saklanir.
+        </div>
         <textarea
           placeholder="Teslimat adresi"
           value={form.address}
@@ -120,6 +123,27 @@ const CheckoutPage = () => {
               setForm((current) => ({
                 ...current,
                 invoiceInfo: { ...current.invoiceInfo, taxOffice: event.target.value }
+              }))
+            }
+          />
+          <input
+            placeholder="Fatura e-postasi"
+            type="email"
+            value={form.invoiceInfo.email}
+            onChange={(event) =>
+              setForm((current) => ({
+                ...current,
+                invoiceInfo: { ...current.invoiceInfo, email: event.target.value }
+              }))
+            }
+          />
+          <input
+            placeholder="Fatura telefonu"
+            value={form.invoiceInfo.phone}
+            onChange={(event) =>
+              setForm((current) => ({
+                ...current,
+                invoiceInfo: { ...current.invoiceInfo, phone: event.target.value }
               }))
             }
           />

@@ -1,39 +1,79 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../../api/client";
 import CategoryCard from "../../components/CategoryCard";
 import ProductCard from "../../components/ProductCard";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
+import { fallbackCategories, fallbackProducts } from "../../utils/fallbackContent";
 
 const ProductsPage = () => {
   const { user } = useAuth();
   const { addToCart } = useCart();
-  const [categories, setCategories] = useState([]);
-  const [products, setProducts] = useState([]);
+  const navigate = useNavigate();
+  const [categories, setCategories] = useState(fallbackCategories);
+  const [products, setProducts] = useState(fallbackProducts);
+  const [usingFallback, setUsingFallback] = useState(false);
   const [filters, setFilters] = useState({
     category: "",
     search: ""
   });
 
   const loadProducts = async (nextFilters = filters) => {
-    const query = new URLSearchParams();
+    if (usingFallback) {
+      const filteredProducts = fallbackProducts.filter((product) => {
+        const matchesCategory = !nextFilters.category || product.category?.slug === nextFilters.category;
+        const matchesSearch =
+          !nextFilters.search ||
+          `${product.name} ${product.description}`.toLowerCase().includes(nextFilters.search.toLowerCase());
 
-    if (nextFilters.category) {
-      query.set("category", nextFilters.category);
+        return matchesCategory && matchesSearch;
+      });
+
+      setProducts(filteredProducts);
+      return;
     }
 
-    if (nextFilters.search) {
-      query.set("search", nextFilters.search);
-    }
+    try {
+      const query = new URLSearchParams();
 
-    const { data } = await api.get(`/products?${query.toString()}`);
-    setProducts(data);
+      if (nextFilters.category) {
+        query.set("category", nextFilters.category);
+      }
+
+      if (nextFilters.search) {
+        query.set("search", nextFilters.search);
+      }
+
+      const { data } = await api.get(`/products?${query.toString()}`);
+      setProducts(data);
+      setUsingFallback(false);
+    } catch (error) {
+      const filteredProducts = fallbackProducts.filter((product) => {
+        const matchesCategory = !nextFilters.category || product.category?.slug === nextFilters.category;
+        const matchesSearch =
+          !nextFilters.search ||
+          `${product.name} ${product.description}`.toLowerCase().includes(nextFilters.search.toLowerCase());
+
+        return matchesCategory && matchesSearch;
+      });
+
+      setProducts(filteredProducts);
+      setUsingFallback(true);
+    }
   };
 
   useEffect(() => {
-    Promise.all([api.get("/categories"), loadProducts()]).then(([categoriesResponse]) => {
-      setCategories(categoriesResponse.data);
-    });
+    Promise.all([api.get("/categories"), loadProducts()])
+      .then(([categoriesResponse]) => {
+        setCategories(categoriesResponse.data);
+        setUsingFallback(false);
+      })
+      .catch(() => {
+        setCategories(fallbackCategories);
+        setProducts(fallbackProducts);
+        setUsingFallback(true);
+      });
   }, []);
 
   const handleSearch = (event) => {
@@ -50,13 +90,33 @@ const ProductsPage = () => {
     loadProducts(nextFilters);
   };
 
+  const handleAddToCart = async (product) => {
+    if (!user) {
+      navigate(`/login?next=/products/${product._id}&intent=cart`);
+      return;
+    }
+
+    if (user.role !== "customer") {
+      return;
+    }
+
+    await addToCart(product._id);
+  };
+
   return (
     <div className="stack-lg">
       <section className="page-header">
         <span className="eyebrow">Urunler</span>
-        <h1>Pastalar, tatlilar ve kurabiye secimleri</h1>
+        <h1>Ekler, magnolya ve porsiyonluk tatli secimleri</h1>
         <p>Kategori filtreleriyle gezinin, detaylari inceleyin ve giris yaptiysaniz sepetinize ekleyin.</p>
       </section>
+
+      {usingFallback && (
+        <div className="info-banner">
+          Urun vitrininde su an ornek icerikler gosteriliyor. Canli veri baglantisi kuruldugunda liste otomatik
+          olarak gercek urunlerle dolacak.
+        </div>
+      )}
 
       <form className="search-panel" onSubmit={handleSearch}>
         <input
@@ -81,16 +141,22 @@ const ProductsPage = () => {
         ))}
       </div>
 
-      <div className="product-grid">
-        {products.map((product) => (
-          <ProductCard
-            key={product._id}
-            product={product}
-            onAddToCart={addToCart}
-            disableCart={!user || user.role !== "customer"}
-          />
-        ))}
-      </div>
+      {products.length ? (
+        <div className="product-grid">
+          {products.map((product) => (
+            <ProductCard
+              key={product._id}
+              product={product}
+              onAddToCart={handleAddToCart}
+              disableCart={user?.role === "admin"}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="panel">
+          Aradiginiz filtrelere uygun urun bulunamadi. Farkli bir kategori secmeyi veya aramayi temizlemeyi deneyin.
+        </div>
+      )}
     </div>
   );
 };

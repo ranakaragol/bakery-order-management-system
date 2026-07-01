@@ -8,16 +8,7 @@ export const registerValidator = [
     .isLength({ min: 6 })
     .withMessage("Password must be at least 6 characters long."),
   body("phone").trim().notEmpty().withMessage("Phone number is required."),
-  body("address").trim().notEmpty().withMessage("Address is required."),
-  body("invoiceInfo.fullName").trim().notEmpty().withMessage("Invoice full name is required."),
-  body("invoiceInfo.billingAddress")
-    .trim()
-    .notEmpty()
-    .withMessage("Invoice billing address is required."),
-  body("invoiceInfo.email")
-    .optional({ values: "falsy" })
-    .isEmail()
-    .withMessage("Invoice email must be valid.")
+  body("address").trim().notEmpty().withMessage("Address is required.")
 ];
 
 export const loginValidator = [

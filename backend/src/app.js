@@ -15,10 +15,23 @@ import { errorHandler, notFound } from "./middleware/errorMiddleware.js";
 dotenv.config();
 
 const app = express();
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  "http://localhost:4173",
+  "http://127.0.0.1:4173",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173"
+].filter(Boolean);
 
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "*"
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("CORS is not allowed for this origin."));
+    }
   })
 );
 app.use(express.json());

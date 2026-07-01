@@ -1,8 +1,7 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import MainLayout from "./layouts/MainLayout";
 import ProtectedRoute from "./guards/ProtectedRoute";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
-import AdminLoginPage from "./pages/admin/AdminLoginPage";
 import CartPage from "./pages/customer/CartPage";
 import CheckoutPage from "./pages/customer/CheckoutPage";
 import HomePage from "./pages/customer/HomePage";
@@ -26,7 +25,7 @@ const App = () => (
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/orders" element={<OrdersPage />} />
       </Route>
-      <Route path="/admin/login" element={<AdminLoginPage />} />
+      <Route path="/admin/login" element={<Navigate to="/login" replace />} />
       <Route element={<ProtectedRoute requiredRole="admin" />}>
         <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
       </Route>
