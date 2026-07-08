@@ -189,6 +189,8 @@ const ProductsPage = () => {
         </div>
       </section>
 
+      <div className="section-divider" aria-hidden="true" />
+
       {products.length ? (
         <div className="product-grid">
           {products.map((product) => (

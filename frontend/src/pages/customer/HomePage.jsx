@@ -95,6 +95,8 @@ const HomePage = () => {
         </div>
       </section>
 
+      <div className="section-divider" aria-hidden="true" />
+
       <section className="content-section">
         <div className="section-heading">
           <span className="eyebrow">Ürünler</span>
