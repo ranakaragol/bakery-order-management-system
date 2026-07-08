@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900">
+  <rect width="1200" height="900" fill="#f8efe4"/>
+  <rect x="72" y="72" width="1056" height="756" rx="36" fill="#fffaf3" stroke="#d5b49a" stroke-width="6"/>
+  <text x="120" y="180" fill="#5d0f20" font-family="Georgia, serif" font-size="58" font-weight="700">Pasali Patiserrie</text>
+  <text x="120" y="244" fill="#9f6d54" font-family="Arial, sans-serif" font-size="30">Fiyat Listesi Placeholder</text>
+  <text x="120" y="340" fill="#5d0f20" font-family="Arial, sans-serif" font-size="34">Gercek fiyat listesi gorselini bu dosyayla degistirin.</text>
+  <text x="120" y="402" fill="#7b5340" font-family="Arial, sans-serif" font-size="28">Konum: frontend/public/assets/documents/pasali-fiyat-listesi.svg</text>
+</svg>

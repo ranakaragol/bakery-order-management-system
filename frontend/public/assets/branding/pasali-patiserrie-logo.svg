@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 120">
+  <rect width="360" height="120" rx="28" fill="#fff7ef"/>
+  <rect x="12" y="12" width="336" height="96" rx="22" fill="#5d0f20"/>
+  <circle cx="68" cy="60" r="26" fill="#f3dcc3"/>
+  <path d="M68 38c-8 9-13 19-13 29 0 7 6 13 13 13s13-6 13-13c0-10-5-20-13-29Z" fill="#5d0f20"/>
+  <text x="112" y="52" fill="#f8efe4" font-family="Georgia, serif" font-size="28" font-weight="700">Pasali</text>
+  <text x="112" y="82" fill="#d8b89a" font-family="Arial, sans-serif" font-size="18" letter-spacing="3">PATISERRIE</text>
+</svg>

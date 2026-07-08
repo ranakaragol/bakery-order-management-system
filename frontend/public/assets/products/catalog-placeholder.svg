@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900">
+  <rect width="1200" height="900" fill="#f7eee5"/>
+  <rect x="72" y="72" width="1056" height="756" rx="34" fill="#fffaf5"/>
+  <text x="120" y="220" fill="#5d0f20" font-family="Georgia, serif" font-size="74" font-weight="700">Pasali Patiserrie</text>
+  <text x="120" y="318" fill="#8f6550" font-family="Arial, sans-serif" font-size="34">Urun gorseli placeholder</text>
+</svg>
