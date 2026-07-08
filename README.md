@@ -1,20 +1,20 @@
 # Bakery Order Management System
 
-Modern, rol bazli bir pastacilik web sitesi projesi. Proje React tabanli bir vitrin ve yonetim arayuzu ile Express + MongoDB destekli REST API katmanindan olusur.
+Modern, rol bazlı bir pastacılık web sitesi projesi. Bu sürümde vitrin ve seed verileri Paşalı Patiserrie kataloğuna göre güncellendi. Proje React tabanlı bir vitrin ve yönetim arayüzü ile Express + MongoDB destekli REST API katmanından oluşur.
 
-## Proje Ozeti
+## Proje Özeti
 
-Bu proje bir pastacilik firmasinin:
+Bu proje bir pastacılık firmasının:
 
-- kurumsal tanitim sayfasini
-- urun ve kategori vitrinini
-- musteri kayit / giris akislarini
-- sepet ve siparis yonetimini
-- admin paneli uzerinden operasyon yonetimini
+- kurumsal tanıtım sayfasını
+- ürün ve kategori vitrinini
+- müşteri kayıt / giriş akışlarını
+- sepet ve sipariş yönetimini
+- admin paneli üzerinden operasyon yönetimini
 
-tek repo icinde duzenli bir klasor yapisiyla sunar.
+tek repo içinde düzenli bir klasör yapısıyla sunar.
 
-## Teknoloji Yapisi
+## Teknoloji Yapısı
 
 - Frontend: React + Vite
 - Backend: Node.js + Express.js
@@ -23,7 +23,7 @@ tek repo icinde duzenli bir klasor yapisiyla sunar.
 - Stil: Ozgun modern CSS
 - API test yapisi: Vitest + Supertest
 
-## Klasor Mimarisi
+## Klasör Mimarisi
 
 ```text
 bakery-order-management-system/
@@ -59,35 +59,71 @@ bakery-order-management-system/
 └── README.md
 ```
 
+## Paşalı Katalog Entegrasyonu
+
+### Asset Yolları
+
+- Logo: `frontend/public/assets/branding/pasali-patiserrie-logo.jpeg`
+- Fiyat listesi görseli: `frontend/public/assets/documents/pasali-fiyat-listesi.jpeg`
+- Gramaj listesi görseli: `frontend/public/assets/documents/pasali-gramaj-listesi.jpeg`
+- Katalog PDF: `frontend/public/assets/documents/pasali-urun-katalogu.pdf`
+- Normalize edilmiş ürün görselleri ve manifest: `frontend/public/assets/products/pasali-catalog/`
+- Orijinal kaynak paket: `pasali_urun_fotograflari/`
+
+### Ürün Verisinin Yönetimi
+
+- Merkezi katalog kaynağı: `shared/pasaliCatalogData.js`
+- Frontend katalog adaptörü: `frontend/src/data/pasaliCatalog.js`
+- Backend seed adaptörü: `backend/src/data/pasaliCatalog.js`
+- Normalize edilmiş manifest kopyası: `frontend/public/assets/products/pasali-catalog/urun_manifest.normalized.json`
+
+### Kategoriler
+
+- Pastalar
+- Ekler
+- Petifür
+- Marki
+- Rulo
+- Cup Tatlılar
+- Cheesecake
+- Tepsi Tatlıları
+
+### Veri Modeli Notu
+
+- Ürünler `id`, `name`, `category`, `image`, `price`, `displayPrice`, `unit`, `weight`, `portion`, `storageCondition`, `shelfLife`, `description`, `catalogPage` alanlarıyla tutulur.
+- Fiyat listesinde olmayan ürünler sistemde `price: null` ve `displayPrice: "Fiyat sorunuz"` ile gösterilir.
+- Tepsi bazlı ürünlerde ürün kartlarında `Tekli satış bulunmamaktadır` notu yer alır.
+- Gramaj bilgileri referans görsele göre güncellendi: ekler `1200 gr`, mozaik `2000 gr`, süt burger `1200 gr`, marki/rulo/Şirozbek/tartolet/İbiza `1500 gr`, Lancop `1000 gr`.
+
 ## Roller ve Yetkiler
 
-### Ziyaretci
+### Ziyaretçi
 
-- Ana sayfayi goruntuler
-- Kategori ve urunleri inceler
-- Iletisim bilgilerini gorur
+- Ana sayfayı görüntüler
+- Kategori ve ürünleri inceler
+- İletişim bilgilerini görür
 - Sepete ekleyemez
-- Siparis veremez
+- Sipariş veremez
 
-### Musteri
+### Müşteri
 
-- Kayit olur ve giris yapar
-- Uyelikte temel hesap ve teslimat bilgilerini girer
-- Fatura bilgilerini siparis olusturma adiminda doldurur
-- Urun detaylarini gorur
-- Sepete urun ekler
-- Sepet gunceller
-- Odeme adimindan siparis olusturur
-- Kendi siparis durumlarini takip eder
+- Kayıt olur ve giriş yapar
+- Üyelikte temel hesap ve teslimat bilgilerini girer
+- Fatura bilgilerini sipariş oluşturma adımında doldurur
+- Ürün detaylarını görür
+- Sepete ürün ekler
+- Sepeti günceller
+- Ödeme adımından sipariş oluşturur
+- Kendi sipariş durumlarını takip eder
 
-### Yonetici
+### Yönetici
 
-- Tek giris ekranindan admin hesabi ile giris yapar
-- Siparisleri listeler
-- Siparis durumunu gunceller
-- Musteri ve fatura bilgilerini gorur
-- Urun / kategori CRUD islemlerini yapar
-- Ana sayfa iletisim bilgilerini yonetir
+- Tek giriş ekranından admin hesabı ile giriş yapar
+- Siparişleri listeler
+- Sipariş durumunu günceller
+- Müşteri ve fatura bilgilerini görür
+- Ürün / kategori CRUD işlemlerini yapar
+- Ana sayfa iletişim bilgilerini yönetir
 
 ## MongoDB Modelleri
 
@@ -99,7 +135,7 @@ bakery-order-management-system/
 - `InvoiceInfo`
 - `ContactInfo`
 
-## Baslica API Uclari
+## Başlıca API Uçları
 
 ### Public
 
@@ -146,7 +182,7 @@ bakery-order-management-system/
 
 ## Kurulum
 
-### 1. Ortam dosyalarini hazirla
+### 1. Ortam dosyalarını hazırla
 
 Kopyalanacak dosyalar:
 
@@ -154,83 +190,83 @@ Kopyalanacak dosyalar:
 - `backend/.env.example` -> `backend/.env`
 - `frontend/.env.example` -> `frontend/.env`
 
-### 2. Bagimliliklari kur
+### 2. Bağımlılıkları kur
 
 ```bash
 cd backend && npm install
 cd ../frontend && npm install
 ```
 
-Isterseniz repo kokunden de ayri ayri calistirabilirsiniz:
+İsterseniz repo kökünden de ayrı ayrı çalıştırabilirsiniz:
 
 ```bash
 npm run dev:backend
 npm run dev:frontend
 ```
 
-### 3. MongoDB baglantisini ac
+### 3. MongoDB bağlantısını aç
 
-Varsayilan baglanti:
+Varsayılan bağlantı:
 
 ```env
 MONGO_URI=mongodb://127.0.0.1:27017/bakery_order_management
 ```
 
-### 3A. Docker ile MongoDB baslat
+### 3A. Docker ile MongoDB başlat
 
-Projede Docker ile kullanima hazir bir [docker-compose.yml](/Users/ranakaragol/Desktop/bakery-management/bakery-order-management-system/docker-compose.yml:1) dosyasi bulunur.
+Projede Docker ile kullanıma hazır bir [docker-compose.yml](/Users/ranakaragol/Desktop/bakery-management/bakery-order-management-system/docker-compose.yml:1) dosyası bulunur.
 
-MongoDB ve yonetim arayuzunu baslatmak icin:
+MongoDB ve yönetim arayüzünü başlatmak için:
 
 ```bash
 docker compose up -d
 ```
 
-Sadece MongoDB baslatmak isterseniz:
+Sadece MongoDB başlatmak isterseniz:
 
 ```bash
 docker compose up -d mongo
 ```
 
-Durumu kontrol etmek icin:
+Durumu kontrol etmek için:
 
 ```bash
 docker compose ps
 ```
 
-MongoDB'yi durdurmak icin:
+MongoDB'yi durdurmak için:
 
 ```bash
 docker compose down
 ```
 
-Veriyi silmeden yeniden baslatmak icin sadece `down` veya `up -d` kullanin. Veritabani verileri `mongo_data` volume icinde saklanir.
+Veriyi silmeden yeniden başlatmak için sadece `down` veya `up -d` kullanın. Veritabanı verileri `mongo_data` volume içinde saklanır.
 
-Mongo arayuzu isterseniz:
+Mongo arayüzü isterseniz:
 
 - MongoDB: `mongodb://127.0.0.1:27017`
 - Mongo Express: `http://localhost:8081`
 
-### 4. Ornek veri ve admin hesabi yukle
+### 4. Örnek veri ve admin hesabı yükle
 
 ```bash
 cd backend
 npm run seed
 ```
 
-Sadece admin kullanicisini eklemek veya guncellemek icin:
+Sadece admin kullanıcısını eklemek veya güncellemek için:
 
 ```bash
 cd backend
 npm run seed:admin
 ```
 
-Varsayilan admin:
+Varsayılan admin:
 
-- E-posta: `admin@firinatelier.com`
-- Sifre: `Admin123!`
+- E-posta: `admin@pasalipatiserrie.com`
+- Şifre: `Admin123!`
 
-## Calistirma
+## Çalıştırma
 
 ### Backend
 
@@ -246,35 +282,35 @@ cd frontend
 npm run dev
 ```
 
-Frontend varsayilan olarak `http://localhost:5173`, backend ise `http://localhost:5000` uzerinden calisir.
+Frontend varsayılan olarak `http://localhost:5173`, backend ise `http://127.0.0.1:5001` üzerinden çalışır.
 
-## Docker Ile Tam Yerel Kurulum
+## Docker ile Tam Yerel Kurulum
 
-1. Docker Desktop'i acin.
-2. Repo kokunde `docker compose up -d` calistirin.
-3. `backend/.env` icinde `MONGO_URI=mongodb://127.0.0.1:27017/bakery_order_management` oldugunu kontrol edin.
-4. Backend'i baslatin:
+1. Docker Desktop'ı açın.
+2. Repo kökünde `docker compose up -d` çalıştırın.
+3. `backend/.env` içinde `MONGO_URI=mongodb://127.0.0.1:27017/bakery_order_management` olduğunu kontrol edin.
+4. Backend'i başlatın:
 
 ```bash
 cd backend
 npm run dev
 ```
 
-5. Frontend'i baslatin:
+5. Frontend'i başlatın:
 
 ```bash
 cd frontend
 npm run dev
 ```
 
-6. Ornek veri gerekiyorsa:
+6. Örnek veri gerekiyorsa:
 
 ```bash
 cd backend
 npm run seed
 ```
 
-7. Sadece admin kaydi gerekiyorsa:
+7. Sadece admin kaydı gerekiyorsa:
 
 ```bash
 cd backend
@@ -283,7 +319,7 @@ npm run seed:admin
 
 ## Test
 
-Backend API test yapisi hazirdir.
+Backend API test yapısı hazırdır.
 
 ```bash
 cd backend
@@ -294,32 +330,32 @@ Mevcut ornek test:
 
 - `src/tests/health.test.js`
 
-Bu yapiya auth, cart, order ve admin akislari icin yeni entegrasyon testleri eklenebilir.
+Bu yapıya auth, cart, order ve admin akışları için yeni entegrasyon testleri eklenebilir.
 
-## Tasarim Yaklasimi
+## Tasarım Yaklaşımı
 
-Arayuz, referans olarak premium pastacilik markalarinin dilini tasiyan ama birebir kopya olmayan ozgun bir gorunume sahiptir:
+Arayüz, Paşalı katalog yapısını bozmadan daha kurumsal bir yöne çekildi:
 
-- yumusak sicak tonlar
-- editorial baslik yapisi
-- cam efekti yuzeyler
-- modern butik marka hissi
-- mobil uyumlu responsive duzen
+- koyu bordo ana renk
+- krem ve açık tonlu arka planlar
+- daha düzenli katalog kartları
+- logo destekli header ve footer
+- mobil uyumlu responsive düzen
 
-## Sonraki Gelistirme Adimlari
+## Sonraki Geliştirme Adımları
 
-- Gercek odeme entegrasyonu
-- Gorsel yukleme servisi
-- Siparis filtreleme ve raporlama
+- Gerçek ödeme entegrasyonu
+- Görsel yükleme servisi
+- Sipariş filtreleme ve raporlama
 - E-posta / SMS bildirimleri
 - Docker ve CI/CD ekleme
 
-## GitHub Icin Notlar
+## GitHub İçin Notlar
 
 - `.gitignore` eklendi
-- `frontend` ve `backend` ayrildi
-- Ortam degiskenleri ornek dosyalarla ayrildi
+- `frontend` ve `backend` ayrıldı
+- Ortam değişkenleri örnek dosyalarla ayrıldı
 - Okunabilir REST mimarisi kuruldu
-- Seed ve test yapisi eklendi
+- Seed ve test yapısı eklendi
 
-Bu repo Visual Studio Code uzerinde rahat gelistirme, parca parca commit atma ve GitHub uzerinden surum takibi icin uygun sekilde duzenlenmistir.
+Bu repo Visual Studio Code üzerinde rahat geliştirme, parça parça commit atma ve GitHub üzerinden sürüm takibi için uygun şekilde düzenlenmiştir.

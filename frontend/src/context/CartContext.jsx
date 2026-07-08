@@ -30,8 +30,8 @@ export const CartProvider = ({ children }) => {
     refreshCart();
   }, [isAuthenticated, user?.role]);
 
-  const addToCart = async (productId, quantity = 1) => {
-    const { data } = await api.post("/cart/items", { productId, quantity });
+  const addToCart = async (productId, quantity = 1, variantId = "") => {
+    const { data } = await api.post("/cart/items", { productId, quantity, variantId });
     setCart(data.cart);
     return data.cart;
   };

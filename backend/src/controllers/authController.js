@@ -10,7 +10,7 @@ export const register = asyncHandler(async (req, res) => {
   const existingUser = await User.findOne({ email });
 
   if (existingUser) {
-    return res.status(409).json({ message: "A user with this email already exists." });
+    return res.status(409).json({ message: "Bu e-posta adresiyle kayıtlı bir kullanıcı zaten var." });
   }
 
   const user = await User.create({
@@ -26,7 +26,7 @@ export const register = asyncHandler(async (req, res) => {
   const populatedUser = await User.findById(user._id).populate("invoiceInfo");
 
   res.status(201).json({
-    message: "Registration completed successfully.",
+    message: "Kayıt işlemi başarıyla tamamlandı.",
     token: generateToken(user),
     user: sanitizeUser(populatedUser)
   });
@@ -38,11 +38,11 @@ export const login = asyncHandler(async (req, res) => {
   const user = await User.findOne({ email }).select("+password").populate("invoiceInfo");
 
   if (!user || !(await user.comparePassword(password))) {
-    return res.status(401).json({ message: "Email or password is incorrect." });
+    return res.status(401).json({ message: "E-posta veya şifre hatalı." });
   }
 
   res.json({
-    message: "Login successful.",
+    message: "Giriş başarılı.",
     token: generateToken(user),
     user: sanitizeUser(user)
   });
@@ -86,7 +86,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
   const updatedUser = await User.findById(req.user._id).populate("invoiceInfo");
 
   res.json({
-    message: "Profile updated successfully.",
+    message: "Profil başarıyla güncellendi.",
     user: sanitizeUser(updatedUser)
   });
 });

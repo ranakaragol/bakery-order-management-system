@@ -27,6 +27,7 @@ const App = () => (
       </Route>
       <Route path="/admin/login" element={<Navigate to="/login" replace />} />
       <Route element={<ProtectedRoute requiredRole="admin" />}>
+        <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />

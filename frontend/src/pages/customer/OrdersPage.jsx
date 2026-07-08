@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../api/client";
-import { formatCurrency, formatDate } from "../../utils/formatters";
+import { formatCurrency, formatDate, formatOrderStatus } from "../../utils/formatters";
 
 const OrdersPage = () => {
   const [orders, setOrders] = useState([]);
@@ -12,8 +12,8 @@ const OrdersPage = () => {
   return (
     <section className="stack-lg">
       <div className="page-header">
-        <span className="eyebrow">Siparislerim</span>
-        <h1>Gecmis siparis takibi</h1>
+        <span className="eyebrow">Siparişlerim</span>
+        <h1>Geçmiş sipariş takibi</h1>
       </div>
 
       <div className="stack-md">
@@ -25,7 +25,7 @@ const OrdersPage = () => {
             </div>
             <div className="summary-row">
               <span>Durum</span>
-              <strong>{order.status}</strong>
+              <strong>{formatOrderStatus(order.status)}</strong>
             </div>
             <div className="summary-row">
               <span>Toplam</span>

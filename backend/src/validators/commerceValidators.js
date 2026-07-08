@@ -1,40 +1,42 @@
 import { body } from "express-validator";
 
 export const addToCartValidator = [
-  body("productId").trim().notEmpty().withMessage("Product ID is required."),
-  body("quantity").optional().isInt({ min: 1 }).withMessage("Quantity must be at least 1.")
+  body("productId").trim().notEmpty().withMessage("Ürün kimliği zorunludur."),
+  body("variantId").optional({ values: "falsy" }).trim(),
+  body("quantity").optional().isInt({ min: 1 }).withMessage("Adet en az 1 olmalıdır.")
 ];
 
 export const updateCartItemValidator = [
-  body("quantity").isInt({ min: 1 }).withMessage("Quantity must be at least 1.")
+  body("quantity").isInt({ min: 1 }).withMessage("Adet en az 1 olmalıdır.")
 ];
 
 export const createOrderValidator = [
-  body("address").trim().notEmpty().withMessage("Delivery address is required."),
-  body("notes").optional().isString().withMessage("Order note must be text."),
+  body("address").trim().notEmpty().withMessage("Teslimat adresi zorunludur."),
+  body("notes").optional().isString().withMessage("Sipariş notu metin olmalıdır."),
   body("invoiceInfo.fullName")
     .optional()
     .trim()
     .notEmpty()
-    .withMessage("Invoice full name cannot be empty."),
+    .withMessage("Fatura adı boş bırakılamaz."),
   body("invoiceInfo.billingAddress")
     .optional()
     .trim()
     .notEmpty()
-    .withMessage("Invoice billing address cannot be empty.")
+    .withMessage("Fatura adresi boş bırakılamaz.")
 ];
 
 export const statusValidator = [
   body("status")
     .isIn(["Hazirlaniyor", "Teslimata Cikti", "Tamamlandi", "Iptal Edildi"])
-    .withMessage("Order status is invalid.")
+    .withMessage("Sipariş durumu geçersiz.")
 ];
 
 export const contactValidator = [
-  body("heroTitle").trim().notEmpty().withMessage("Hero title is required."),
-  body("heroDescription").trim().notEmpty().withMessage("Hero description is required."),
-  body("phone").trim().notEmpty().withMessage("Phone number is required."),
-  body("email").isEmail().withMessage("A valid email address is required."),
-  body("address").trim().notEmpty().withMessage("Address is required."),
-  body("workingHours").trim().notEmpty().withMessage("Working hours are required.")
+  body("heroTitle").trim().notEmpty().withMessage("Hero başlığı zorunludur."),
+  body("heroDescription").trim().notEmpty().withMessage("Hero açıklaması zorunludur."),
+  body("phone").trim().notEmpty().withMessage("Telefon numarası zorunludur."),
+  body("email").isEmail().withMessage("Geçerli bir e-posta adresi girilmelidir."),
+  body("address").trim().notEmpty().withMessage("Adres zorunludur."),
+  body("workingHours").trim().notEmpty().withMessage("Çalışma saatleri zorunludur."),
+  body("mapUrl").optional({ values: "falsy" }).trim()
 ];

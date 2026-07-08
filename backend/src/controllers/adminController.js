@@ -6,9 +6,11 @@ import User from "../models/User.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { sanitizeUser } from "../utils/sanitizeUser.js";
 
+const legacyCakeSizeNames = ["Tek Pasta", "0 No Pasta", "1 No Pasta", "2 No Pasta"];
+
 export const getDashboard = asyncHandler(async (req, res) => {
   const [productCount, categoryCount, customerCount, orderCount, recentOrders] = await Promise.all([
-    Product.countDocuments(),
+    Product.countDocuments({ name: { $nin: legacyCakeSizeNames } }),
     Category.countDocuments(),
     User.countDocuments({ role: "customer" }),
     Order.countDocuments(),
@@ -42,14 +44,14 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id);
 
   if (!order) {
-    return res.status(404).json({ message: "Order not found." });
+    return res.status(404).json({ message: "Sipariş bulunamadı." });
   }
 
   order.status = req.body.status;
   await order.save();
 
   res.json({
-    message: "Order status updated successfully.",
+    message: "Sipariş durumu başarıyla güncellendi.",
     order
   });
 });
@@ -66,7 +68,7 @@ export const getCustomerById = asyncHandler(async (req, res) => {
   const customer = await User.findOne({ _id: req.params.id, role: "customer" }).populate("invoiceInfo");
 
   if (!customer) {
-    return res.status(404).json({ message: "Customer not found." });
+    return res.status(404).json({ message: "Müşteri bulunamadı." });
   }
 
   const orders = await Order.find({ user: customer._id }).sort({ createdAt: -1 });
@@ -87,6 +89,7 @@ export const getContactInfo = asyncHandler(async (req, res) => {
       phone: "",
       email: "",
       address: "",
+      mapUrl: "",
       workingHours: "",
       socialLinks: {
         instagram: "",
@@ -108,7 +111,7 @@ export const upsertContactInfo = asyncHandler(async (req, res) => {
   }
 
   res.json({
-    message: "Contact information updated successfully.",
+    message: "İletişim bilgileri başarıyla güncellendi.",
     contactInfo
   });
 });

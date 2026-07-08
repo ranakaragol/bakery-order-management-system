@@ -6,13 +6,12 @@ import { connectDB } from "../config/db.js";
 dotenv.config();
 
 const adminProfile = {
-  firstName: process.env.ADMIN_SEED_FIRST_NAME || "Atelier",
+  firstName: process.env.ADMIN_SEED_FIRST_NAME || "Paşalı",
   lastName: process.env.ADMIN_SEED_LAST_NAME || "Admin",
-  email: process.env.ADMIN_SEED_EMAIL || "admin@firinatelier.com",
+  email: process.env.ADMIN_SEED_EMAIL || "admin@pasalipatiserrie.com",
   password: process.env.ADMIN_SEED_PASSWORD || "Admin123!",
   phone: process.env.ADMIN_SEED_PHONE || "+90 555 000 11 22",
-  address:
-    process.env.ADMIN_SEED_ADDRESS || "Tesvikiye Mah. Valikonagi Cad. No: 18 Sisli / Istanbul"
+  address: process.env.ADMIN_SEED_ADDRESS || "Paşalı Patiserrie katalog yönetim hesabı"
 };
 
 const upsertAdmin = async () => {
@@ -49,7 +48,7 @@ const upsertAdmin = async () => {
       billingAddress: adminProfile.address,
       email: adminProfile.email,
       phone: adminProfile.phone,
-      companyName: "Firin Atelier"
+      companyName: "Paşalı Patiserrie"
     });
     user.invoiceInfo = invoiceInfo._id;
     await user.save();
@@ -60,7 +59,7 @@ const upsertAdmin = async () => {
     invoiceInfo.billingAddress = adminProfile.address;
     invoiceInfo.email = adminProfile.email;
     invoiceInfo.phone = adminProfile.phone;
-    invoiceInfo.companyName = invoiceInfo.companyName || "Firin Atelier";
+    invoiceInfo.companyName = invoiceInfo.companyName || "Paşalı Patiserrie";
     await invoiceInfo.save();
   }
 

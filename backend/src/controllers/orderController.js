@@ -10,7 +10,7 @@ export const createOrder = asyncHandler(async (req, res) => {
   const cart = await Cart.findOne({ user: req.user._id }).populate("items.product");
 
   if (!cart || cart.items.length === 0) {
-    return res.status(400).json({ message: "Cart is empty." });
+    return res.status(400).json({ message: "Sepetiniz boş." });
   }
 
   let invoiceInfo;
@@ -37,7 +37,7 @@ export const createOrder = asyncHandler(async (req, res) => {
   }
 
   if (!invoiceInfo) {
-    return res.status(400).json({ message: "Invoice information is required to place an order." });
+    return res.status(400).json({ message: "Sipariş oluşturmak için fatura bilgileri gereklidir." });
   }
 
   const subtotal = Number(cart.subtotal.toFixed(2));
@@ -50,6 +50,8 @@ export const createOrder = asyncHandler(async (req, res) => {
       product: item.product._id,
       name: item.nameSnapshot,
       imageUrl: item.imageUrlSnapshot,
+      variantId: item.variantId || "",
+      variantName: item.variantName || "",
       quantity: item.quantity,
       unitPrice: item.unitPrice
     })),
@@ -72,7 +74,7 @@ export const createOrder = asyncHandler(async (req, res) => {
     .populate("user", "firstName lastName email phone");
 
   res.status(201).json({
-    message: "Order created successfully.",
+    message: "Sipariş başarıyla oluşturuldu.",
     order: populatedOrder
   });
 });
@@ -91,14 +93,14 @@ export const getOrderById = asyncHandler(async (req, res) => {
     .populate("user", "firstName lastName email phone");
 
   if (!order) {
-    return res.status(404).json({ message: "Order not found." });
+    return res.status(404).json({ message: "Sipariş bulunamadı." });
   }
 
   const isOwner = order.user._id.toString() === req.user._id.toString();
   const isAdmin = req.user.role === "admin";
 
   if (!isOwner && !isAdmin) {
-    return res.status(403).json({ message: "You do not have permission to view this order." });
+    return res.status(403).json({ message: "Bu siparişi görüntüleme yetkiniz yok." });
   }
 
   res.json(order);

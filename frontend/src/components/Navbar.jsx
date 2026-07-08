@@ -1,6 +1,7 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
+import { pasaliBrand } from "../data/pasaliCatalog";
 
 const Navbar = () => {
   const { user, logout, isAuthenticated } = useAuth();
@@ -15,18 +16,18 @@ const Navbar = () => {
   return (
     <header className="site-header">
       <Link to="/" className="brand-mark">
-        <span className="brand-mark__badge">FA</span>
+        <img src={pasaliBrand.logo} alt={pasaliBrand.name} className="brand-mark__logo" />
         <span>
-          <strong>Firin Atelier</strong>
-          <small>Butik pasta evi</small>
+          <strong>{pasaliBrand.name}</strong>
+          <small>{pasaliBrand.tagline}</small>
         </span>
       </Link>
 
       <nav className="site-nav">
         <NavLink to="/">Ana Sayfa</NavLink>
-        <NavLink to="/products">Urunler</NavLink>
+        <NavLink to="/products">Ürünler</NavLink>
         <NavLink to="/cart">Sepet ({itemCount})</NavLink>
-        {user?.role === "customer" && <NavLink to="/orders">Siparislerim</NavLink>}
+        {user?.role === "customer" && <NavLink to="/orders">Siparişlerim</NavLink>}
         {user?.role === "admin" && <NavLink to="/admin/dashboard">Admin Panel</NavLink>}
       </nav>
 
@@ -34,17 +35,17 @@ const Navbar = () => {
         {!isAuthenticated ? (
           <>
             <Link to="/login" className="ghost-button">
-              Giris
+              Giriş
             </Link>
             <Link to="/register" className="primary-button">
-              Kayit Ol
+              Kayıt Ol
             </Link>
           </>
         ) : (
           <>
             <span className="welcome-text">{user.firstName}</span>
             <button type="button" className="ghost-button" onClick={handleLogout}>
-              Cikis
+              Çıkış
             </button>
           </>
         )}

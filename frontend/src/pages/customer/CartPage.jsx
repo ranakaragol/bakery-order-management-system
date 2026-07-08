@@ -11,7 +11,7 @@ const CartPage = () => {
   if (!user) {
     return (
       <section className="panel">
-        Sepetinizi gormek icin once <Link to="/login">giris yapin</Link>.
+        Sepetinizi görmek için önce <Link to="/login">giriş yapın</Link>.
       </section>
     );
   }
@@ -20,11 +20,11 @@ const CartPage = () => {
     <section className="stack-lg">
       <div className="page-header">
         <span className="eyebrow">Sepet</span>
-        <h1>Secilen urunler</h1>
+        <h1>Seçilen ürünler</h1>
       </div>
 
       {!cart?.items?.length ? (
-        <div className="panel">Sepetiniz bos.</div>
+        <div className="panel">Sepetiniz boş.</div>
       ) : (
         <div className="cart-layout">
           <div className="stack-md">
@@ -34,6 +34,7 @@ const CartPage = () => {
                 <div className="cart-item__content">
                   <h3>{item.nameSnapshot}</h3>
                   <p>{formatCurrency(item.unitPrice)}</p>
+                  <p>Satır toplamı: {formatCurrency(item.unitPrice * item.quantity)}</p>
                   <div className="quantity-inline">
                     <button
                       type="button"
@@ -53,21 +54,21 @@ const CartPage = () => {
                   </div>
                 </div>
                 <button type="button" className="text-button" onClick={() => removeCartItem(item._id)}>
-                  Kaldir
+                  Kaldır
                 </button>
               </article>
             ))}
           </div>
 
           <aside className="summary-card">
-            <h2>Sepet Ozeti</h2>
+            <h2>Sepet Özeti</h2>
             <div className="summary-row">
               <span>Ara Toplam</span>
               <strong>{formatCurrency(subtotal)}</strong>
             </div>
-            <p>2500 TL ve uzeri siparislerde teslimat ucretsizdir.</p>
+            <p>2500 TL ve üzeri siparişlerde teslimat ücretsizdir.</p>
             <button type="button" className="primary-button" onClick={() => navigate("/checkout")}>
-              Odemeye Gec
+              Ödemeye Geç
             </button>
           </aside>
         </div>

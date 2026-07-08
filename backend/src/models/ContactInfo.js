@@ -32,6 +32,11 @@ const contactInfoSchema = new mongoose.Schema(
       required: true,
       trim: true
     },
+    mapUrl: {
+      type: String,
+      trim: true,
+      default: ""
+    },
     socialLinks: {
       instagram: {
         type: String,

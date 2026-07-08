@@ -1,0 +1,389 @@
+[
+  {
+    "kategori": "Ekler",
+    "urun": "Çikolatalı Ekler",
+    "sayfa": 3,
+    "dosya": "Ekler/cikolatal-ekler.jpg",
+    "normalizedCategorySlug": "ekler",
+    "normalizedNameSlug": "cikolatali-ekler",
+    "normalizedDosya": "ekler/cikolatali-ekler.jpg"
+  },
+  {
+    "kategori": "Ekler",
+    "urun": "Lotuslu Ekler",
+    "sayfa": 3,
+    "dosya": "Ekler/lotuslu-ekler.jpg",
+    "normalizedCategorySlug": "ekler",
+    "normalizedNameSlug": "lotuslu-ekler",
+    "normalizedDosya": "ekler/lotuslu-ekler.jpg"
+  },
+  {
+    "kategori": "Ekler",
+    "urun": "Çilekli Ekler",
+    "sayfa": 3,
+    "dosya": "Ekler/cilekli-ekler.jpg",
+    "normalizedCategorySlug": "ekler",
+    "normalizedNameSlug": "cilekli-ekler",
+    "normalizedDosya": "ekler/cilekli-ekler.jpg"
+  },
+  {
+    "kategori": "Ekler",
+    "urun": "Fıstıklı Ekler",
+    "sayfa": 4,
+    "dosya": "Ekler/fstkl-ekler.jpg",
+    "normalizedCategorySlug": "ekler",
+    "normalizedNameSlug": "fistikli-ekler",
+    "normalizedDosya": "ekler/fistikli-ekler.jpg"
+  },
+  {
+    "kategori": "Ekler",
+    "urun": "Meyveli Ekler",
+    "sayfa": 4,
+    "dosya": "Ekler/meyveli-ekler.jpg",
+    "normalizedCategorySlug": "ekler",
+    "normalizedNameSlug": "meyveli-ekler",
+    "normalizedDosya": "ekler/meyveli-ekler.jpg"
+  },
+  {
+    "kategori": "Petifür",
+    "urun": "Meyveli Tartolet",
+    "sayfa": 4,
+    "dosya": "Petifür/meyveli-tartolet.jpg",
+    "normalizedCategorySlug": "petifur",
+    "normalizedNameSlug": "meyveli-tartolet",
+    "normalizedDosya": "petifur/meyveli-tartolet.jpg"
+  },
+  {
+    "kategori": "Marki",
+    "urun": "Marki Çilek",
+    "sayfa": 5,
+    "dosya": "Marki/marki-cilek.jpg",
+    "normalizedCategorySlug": "marki",
+    "normalizedNameSlug": "marki-cilek",
+    "normalizedDosya": "marki/marki-cilek.jpg"
+  },
+  {
+    "kategori": "Marki",
+    "urun": "Marki Çikolata",
+    "sayfa": 5,
+    "dosya": "Marki/marki-cikolata.jpg",
+    "normalizedCategorySlug": "marki",
+    "normalizedNameSlug": "marki-cikolata",
+    "normalizedDosya": "marki/marki-cikolata.jpg"
+  },
+  {
+    "kategori": "Marki",
+    "urun": "Marki Fıstık",
+    "sayfa": 5,
+    "dosya": "Marki/marki-fstk.jpg",
+    "normalizedCategorySlug": "marki",
+    "normalizedNameSlug": "marki-fistik",
+    "normalizedDosya": "marki/marki-fistik.jpg"
+  },
+  {
+    "kategori": "Rulo",
+    "urun": "Muz Çilek Rulo",
+    "sayfa": 6,
+    "dosya": "Rulo/muz-cilek-rulo.jpg",
+    "normalizedCategorySlug": "rulo",
+    "normalizedNameSlug": "muz-cilek-rulo",
+    "normalizedDosya": "rulo/muz-cilek-rulo.jpg"
+  },
+  {
+    "kategori": "Rulo",
+    "urun": "Çikolata Rulo",
+    "sayfa": 6,
+    "dosya": "Rulo/cikolata-rulo.jpg",
+    "normalizedCategorySlug": "rulo",
+    "normalizedNameSlug": "cikolata-rulo",
+    "normalizedDosya": "rulo/cikolata-rulo.jpg"
+  },
+  {
+    "kategori": "Rulo",
+    "urun": "İbiza Rulo",
+    "sayfa": 6,
+    "dosya": "Rulo/ibiza-rulo.jpg",
+    "normalizedCategorySlug": "rulo",
+    "normalizedNameSlug": "ibiza-rulo",
+    "normalizedDosya": "rulo/ibiza-rulo.jpg"
+  },
+  {
+    "kategori": "Rulo",
+    "urun": "İbiza Rulo Çikolata Parçacıklı",
+    "sayfa": 7,
+    "dosya": "Rulo/ibiza-rulo-cikolata-parcackl.jpg",
+    "normalizedCategorySlug": "rulo",
+    "normalizedNameSlug": "ibiza-rulo-cikolata-parcacikli",
+    "normalizedDosya": "rulo/ibiza-rulo-cikolata-parcacikli.jpg"
+  },
+  {
+    "kategori": "Petifür",
+    "urun": "Snickers",
+    "sayfa": 8,
+    "dosya": "Petifür/snickers.jpg",
+    "normalizedCategorySlug": "petifur",
+    "normalizedNameSlug": "snickers",
+    "normalizedDosya": "petifur/snickers.jpg"
+  },
+  {
+    "kategori": "Petifür",
+    "urun": "Lancop",
+    "sayfa": 8,
+    "dosya": "Petifür/lancop.jpg",
+    "normalizedCategorySlug": "petifur",
+    "normalizedNameSlug": "lancop",
+    "normalizedDosya": "petifur/lancop.jpg"
+  },
+  {
+    "kategori": "Cup Tatlılar",
+    "urun": "Profiterol",
+    "sayfa": 8,
+    "dosya": "Cup Tatlılar/profiterol.jpg",
+    "normalizedCategorySlug": "cup-tatlilar",
+    "normalizedNameSlug": "profiterol",
+    "normalizedDosya": "cup-tatlilar/profiterol.jpg"
+  },
+  {
+    "kategori": "Cup Tatlılar",
+    "urun": "Magnolia Muz",
+    "sayfa": 9,
+    "dosya": "Cup Tatlılar/magnolia-muz.jpg",
+    "normalizedCategorySlug": "cup-tatlilar",
+    "normalizedNameSlug": "magnolia-muz",
+    "normalizedDosya": "cup-tatlilar/magnolia-muz.jpg"
+  },
+  {
+    "kategori": "Cup Tatlılar",
+    "urun": "Magnolia Çilek",
+    "sayfa": 9,
+    "dosya": "Cup Tatlılar/magnolia-cilek.jpg",
+    "normalizedCategorySlug": "cup-tatlilar",
+    "normalizedNameSlug": "magnolia-cilek",
+    "normalizedDosya": "cup-tatlilar/magnolia-cilek.jpg"
+  },
+  {
+    "kategori": "Cup Tatlılar",
+    "urun": "Magnolia Oreo",
+    "sayfa": 9,
+    "dosya": "Cup Tatlılar/magnolia-oreo.jpg",
+    "normalizedCategorySlug": "cup-tatlilar",
+    "normalizedNameSlug": "magnolia-oreo",
+    "normalizedDosya": "cup-tatlilar/magnolia-oreo.jpg"
+  },
+  {
+    "kategori": "Cheesecake",
+    "urun": "Cheesecake Limon",
+    "sayfa": 10,
+    "dosya": "Cheesecake/cheesecake-limon.jpg",
+    "normalizedCategorySlug": "cheesecake",
+    "normalizedNameSlug": "cheesecake-limon",
+    "normalizedDosya": "cheesecake/cheesecake-limon.jpg"
+  },
+  {
+    "kategori": "Cheesecake",
+    "urun": "Cheesecake Portakal",
+    "sayfa": 10,
+    "dosya": "Cheesecake/cheesecake-portakal.jpg",
+    "normalizedCategorySlug": "cheesecake",
+    "normalizedNameSlug": "cheesecake-portakal",
+    "normalizedDosya": "cheesecake/cheesecake-portakal.jpg"
+  },
+  {
+    "kategori": "Cheesecake",
+    "urun": "Cheesecake Frambuaz",
+    "sayfa": 10,
+    "dosya": "Cheesecake/cheesecake-frambuaz.jpg",
+    "normalizedCategorySlug": "cheesecake",
+    "normalizedNameSlug": "cheesecake-frambuaz",
+    "normalizedDosya": "cheesecake/cheesecake-frambuaz.jpg"
+  },
+  {
+    "kategori": "Petifür",
+    "urun": "Şirozbek",
+    "sayfa": 11,
+    "dosya": "Petifür/sirozbek.jpg",
+    "normalizedCategorySlug": "petifur",
+    "normalizedNameSlug": "sirozbek",
+    "normalizedDosya": "petifur/sirozbek.jpg"
+  },
+  {
+    "kategori": "Tepsi Tatlıları",
+    "urun": "Mozaik Pasta",
+    "sayfa": 11,
+    "dosya": "Tepsi Tatlıları/mozaik-pasta.jpg",
+    "normalizedCategorySlug": "tepsi-tatlilari",
+    "normalizedNameSlug": "mozaik-pasta",
+    "normalizedDosya": "tepsi-tatlilari/mozaik-pasta.jpg"
+  },
+  {
+    "kategori": "Petifür",
+    "urun": "Çilekli Süt Burger",
+    "sayfa": 11,
+    "dosya": "Petifür/cilekli-sut-burger.jpg",
+    "normalizedCategorySlug": "petifur",
+    "normalizedNameSlug": "cilekli-sut-burger",
+    "normalizedDosya": "petifur/cilekli-sut-burger.jpg"
+  },
+  {
+    "kategori": "Tepsi Tatlıları",
+    "urun": "Karamel Trileçe",
+    "sayfa": 12,
+    "dosya": "Tepsi Tatlıları/karamel-trilece.jpg",
+    "normalizedCategorySlug": "tepsi-tatlilari",
+    "normalizedNameSlug": "karamel-trilece",
+    "normalizedDosya": "tepsi-tatlilari/karamel-trilece.jpg"
+  },
+  {
+    "kategori": "Tepsi Tatlıları",
+    "urun": "Frambuaz Trileçe",
+    "sayfa": 12,
+    "dosya": "Tepsi Tatlıları/frambuaz-trilece.jpg",
+    "normalizedCategorySlug": "tepsi-tatlilari",
+    "normalizedNameSlug": "frambuaz-trilece",
+    "normalizedDosya": "tepsi-tatlilari/frambuaz-trilece.jpg"
+  },
+  {
+    "kategori": "Tepsi Tatlıları",
+    "urun": "Tiramisu",
+    "sayfa": 12,
+    "dosya": "Tepsi Tatlıları/tiramisu.jpg",
+    "normalizedCategorySlug": "tepsi-tatlilari",
+    "normalizedNameSlug": "tiramisu",
+    "normalizedDosya": "tepsi-tatlilari/tiramisu.jpg"
+  },
+  {
+    "kategori": "Tepsi Tatlıları",
+    "urun": "Çikolatalı Islak Kek",
+    "sayfa": 13,
+    "dosya": "Tepsi Tatlıları/cikolatal-islak-kek.jpg",
+    "normalizedCategorySlug": "tepsi-tatlilari",
+    "normalizedNameSlug": "cikolatali-islak-kek",
+    "normalizedDosya": "tepsi-tatlilari/cikolatali-islak-kek.jpg"
+  },
+  {
+    "kategori": "Tepsi Tatlıları",
+    "urun": "Lotus Kaşık",
+    "sayfa": 13,
+    "dosya": "Tepsi Tatlıları/lotus-kask.jpg",
+    "normalizedCategorySlug": "tepsi-tatlilari",
+    "normalizedNameSlug": "lotus-kasik",
+    "normalizedDosya": "tepsi-tatlilari/lotus-kasik.jpg"
+  },
+  {
+    "kategori": "Tepsi Tatlıları",
+    "urun": "Soğuk Baklava",
+    "sayfa": 13,
+    "dosya": "Tepsi Tatlıları/soguk-baklava.jpg",
+    "normalizedCategorySlug": "tepsi-tatlilari",
+    "normalizedNameSlug": "soguk-baklava",
+    "normalizedDosya": "tepsi-tatlilari/soguk-baklava.jpg"
+  },
+  {
+    "kategori": "Pastalar",
+    "urun": "Babaroski Pasta",
+    "sayfa": 14,
+    "dosya": "Pastalar/babaroski-pasta.jpg",
+    "normalizedCategorySlug": "pastalar",
+    "normalizedNameSlug": "babaroski-pasta",
+    "normalizedDosya": "pastalar/babaroski-pasta.jpg"
+  },
+  {
+    "kategori": "Pastalar",
+    "urun": "Mois Pasta",
+    "sayfa": 14,
+    "dosya": "Pastalar/mois-pasta.jpg",
+    "normalizedCategorySlug": "pastalar",
+    "normalizedNameSlug": "mois-pasta",
+    "normalizedDosya": "pastalar/mois-pasta.jpg"
+  },
+  {
+    "kategori": "Pastalar",
+    "urun": "Lotus Pasta",
+    "sayfa": 14,
+    "dosya": "Pastalar/lotus-pasta.jpg",
+    "normalizedCategorySlug": "pastalar",
+    "normalizedNameSlug": "lotus-pasta",
+    "normalizedDosya": "pastalar/lotus-pasta.jpg"
+  },
+  {
+    "kategori": "Pastalar",
+    "urun": "Oreo Pasta",
+    "sayfa": 15,
+    "dosya": "Pastalar/oreo-pasta.jpg",
+    "normalizedCategorySlug": "pastalar",
+    "normalizedNameSlug": "oreo-pasta",
+    "normalizedDosya": "pastalar/oreo-pasta.jpg"
+  },
+  {
+    "kategori": "Pastalar",
+    "urun": "Çikolata Pasta",
+    "sayfa": 15,
+    "dosya": "Pastalar/cikolata-pasta.jpg",
+    "normalizedCategorySlug": "pastalar",
+    "normalizedNameSlug": "cikolata-pasta",
+    "normalizedDosya": "pastalar/cikolata-pasta.jpg"
+  },
+  {
+    "kategori": "Pastalar",
+    "urun": "Çilek Beyaz Pasta",
+    "sayfa": 15,
+    "dosya": "Pastalar/cilek-beyaz-pasta.jpg",
+    "normalizedCategorySlug": "pastalar",
+    "normalizedNameSlug": "cilek-beyaz-pasta",
+    "normalizedDosya": "pastalar/cilek-beyaz-pasta.jpg"
+  },
+  {
+    "kategori": "Pastalar",
+    "urun": "Muzlu Pasta",
+    "sayfa": 16,
+    "dosya": "Pastalar/muzlu-pasta.jpg",
+    "normalizedCategorySlug": "pastalar",
+    "normalizedNameSlug": "muzlu-pasta",
+    "normalizedDosya": "pastalar/muzlu-pasta.jpg"
+  },
+  {
+    "kategori": "Pastalar",
+    "urun": "Çilek Çikolata Pasta",
+    "sayfa": 16,
+    "dosya": "Pastalar/cilek-cikolata-pasta.jpg",
+    "normalizedCategorySlug": "pastalar",
+    "normalizedNameSlug": "cilek-cikolata-pasta",
+    "normalizedDosya": "pastalar/cilek-cikolata-pasta.jpg"
+  },
+  {
+    "kategori": "Pastalar",
+    "urun": "Fıstıklı Pasta",
+    "sayfa": 16,
+    "dosya": "Pastalar/fstkl-pasta.jpg",
+    "normalizedCategorySlug": "pastalar",
+    "normalizedNameSlug": "fistikli-pasta",
+    "normalizedDosya": "pastalar/fistikli-pasta.jpg"
+  },
+  {
+    "kategori": "Pastalar",
+    "urun": "Krokanlı Pasta",
+    "sayfa": 17,
+    "dosya": "Pastalar/krokanl-pasta.jpg",
+    "normalizedCategorySlug": "pastalar",
+    "normalizedNameSlug": "krokanli-pasta",
+    "normalizedDosya": "pastalar/krokanli-pasta.jpg"
+  },
+  {
+    "kategori": "Pastalar",
+    "urun": "Profiterol Pasta",
+    "sayfa": 17,
+    "dosya": "Pastalar/profiterol-pasta.jpg",
+    "normalizedCategorySlug": "pastalar",
+    "normalizedNameSlug": "profiterol-pasta",
+    "normalizedDosya": "pastalar/profiterol-pasta.jpg"
+  },
+  {
+    "kategori": "Pastalar",
+    "urun": "Hasbahçe Pasta",
+    "sayfa": 17,
+    "dosya": "Pastalar/hasbahce-pasta.jpg",
+    "normalizedCategorySlug": "pastalar",
+    "normalizedNameSlug": "hasbahce-pasta",
+    "normalizedDosya": "pastalar/hasbahce-pasta.jpg"
+  }
+]

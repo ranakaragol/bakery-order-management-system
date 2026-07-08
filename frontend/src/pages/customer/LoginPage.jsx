@@ -25,18 +25,18 @@ const LoginPage = () => {
 
       navigate(nextPath || "/");
     } catch (requestError) {
-      setError(requestError.response?.data?.message || "Giris yapilamadi.");
+      setError(requestError.response?.data?.message || "Giriş yapılamadı.");
     }
   };
 
   return (
     <section className="auth-shell">
       <form className="auth-card" onSubmit={handleSubmit}>
-        <span className="eyebrow">Tek Giris</span>
-        <h1>Hesabiniza veya yonetim paneline girin</h1>
+        <span className="eyebrow">Tek Giriş</span>
+        <h1>Hesabınıza veya yönetim paneline girin</h1>
         {intent === "cart" && (
           <div className="info-banner">
-            Sepete urun eklemek icin once giris yapmaniz veya yeni hesap olusturmaniz gerekiyor.
+            Sepete ürün eklemek için önce giriş yapmanız veya yeni hesap oluşturmanız gerekiyor.
           </div>
         )}
         <input
@@ -48,17 +48,17 @@ const LoginPage = () => {
         />
         <input
           type="password"
-          placeholder="Sifre"
+          placeholder="Şifre"
           required
           value={form.password}
           onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
         />
         {error && <p className="error-text">{error}</p>}
         <button type="submit" className="primary-button" disabled={loading}>
-          Giris Yap
+          Giriş Yap
         </button>
         <p>
-          Hesabiniz yok mu? <Link to={registerLink}>Kayit olun</Link>
+          Hesabınız yok mu? <Link to={registerLink}>Kayıt olun</Link>
         </p>
       </form>
     </section>

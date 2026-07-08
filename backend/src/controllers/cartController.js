@@ -1,6 +1,7 @@
 import Cart from "../models/Cart.js";
 import Product from "../models/Product.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { normalizeProductResponse } from "../utils/normalizeProductResponse.js";
 
 const recalculateCart = (cart) => {
   cart.itemCount = cart.items.reduce((sum, item) => sum + item.quantity, 0);
@@ -12,12 +13,33 @@ const recalculateCart = (cart) => {
 const populateCart = (cart) =>
   cart.populate({
     path: "items.product",
-    select: "name slug price imageUrl stockStatus stockQuantity category",
+    select:
+      "name slug price image imageUrl unit weight portion variants shelfLife storageCondition stockStatus stockQuantity category",
     populate: {
       path: "category",
       select: "name slug"
     }
   });
+
+const normalizeCartResponse = (cart) => {
+  const cartObject = typeof cart.toObject === "function" ? cart.toObject() : cart;
+
+  return {
+    ...cartObject,
+    items: cartObject.items.map((item) => {
+      const normalizedProduct = normalizeProductResponse(item.product);
+      const normalizedNameSnapshot = item.variantName
+        ? `${normalizedProduct.name} - ${item.variantName.replace(" Pasta", "")}`
+        : normalizedProduct?.name || item.nameSnapshot;
+
+      return {
+        ...item,
+        product: normalizedProduct,
+        nameSnapshot: normalizedNameSnapshot
+      };
+    })
+  };
+};
 
 const getOrCreateCart = async (userId) => {
   let cart = await Cart.findOne({ user: userId });
@@ -37,34 +59,59 @@ const getOrCreateCart = async (userId) => {
 export const getCart = asyncHandler(async (req, res) => {
   const cart = await getOrCreateCart(req.user._id);
   await populateCart(cart);
-  res.json(cart);
+  res.json(normalizeCartResponse(cart));
 });
 
 export const addToCart = asyncHandler(async (req, res) => {
-  const { productId, quantity = 1 } = req.body;
+  const { productId, quantity = 1, variantId = "" } = req.body;
   const product = await Product.findById(productId);
 
   if (!product) {
-    return res.status(404).json({ message: "Product not found." });
+    return res.status(404).json({ message: "Ürün bulunamadı." });
   }
 
   if (product.stockStatus === "out_of_stock") {
-    return res.status(400).json({ message: "This product is currently out of stock." });
+    return res.status(400).json({ message: "Bu ürün şu anda stokta yok." });
   }
 
+  const normalizedProduct = normalizeProductResponse(product);
+  const hasVariants = Array.isArray(normalizedProduct.variants) && normalizedProduct.variants.length > 0;
+  const selectedVariant = hasVariants ? normalizedProduct.variants.find((variant) => variant.id === variantId) : null;
+
+  if (hasVariants && !selectedVariant) {
+    return res.status(400).json({ message: "Bu pasta için sepete eklemeden önce boy seçmelisiniz." });
+  }
+
+  if (!hasVariants && (normalizedProduct.price === null || normalizedProduct.price === undefined)) {
+    return res.status(400).json({ message: "Bu ürün için sipariş öncesi fiyat teyidi gereklidir." });
+  }
+
+  const resolvedVariantId = selectedVariant?.id || "";
+  const resolvedVariantName = selectedVariant?.name || "";
+  const resolvedUnitPrice = selectedVariant?.price ?? normalizedProduct.price;
+  const resolvedNameSnapshot = selectedVariant
+    ? `${normalizedProduct.name} - ${selectedVariant.name.replace(" Pasta", "")}`
+    : normalizedProduct.name;
+
   const cart = await getOrCreateCart(req.user._id);
-  const existingItem = cart.items.find((item) => item.product.toString() === productId);
+  const existingItem = cart.items.find(
+    (item) => item.product.toString() === productId && (item.variantId || "") === resolvedVariantId
+  );
 
   if (existingItem) {
     existingItem.quantity += Number(quantity);
-    existingItem.unitPrice = product.price;
+    existingItem.unitPrice = resolvedUnitPrice;
+    existingItem.variantName = resolvedVariantName;
+    existingItem.nameSnapshot = resolvedNameSnapshot;
   } else {
     cart.items.push({
       product: product._id,
-      nameSnapshot: product.name,
-      imageUrlSnapshot: product.imageUrl,
+      nameSnapshot: resolvedNameSnapshot,
+      imageUrlSnapshot: normalizedProduct.image || normalizedProduct.imageUrl,
+      variantId: resolvedVariantId,
+      variantName: resolvedVariantName,
       quantity: Number(quantity),
-      unitPrice: product.price
+      unitPrice: resolvedUnitPrice
     });
   }
 
@@ -73,8 +120,8 @@ export const addToCart = asyncHandler(async (req, res) => {
   await populateCart(cart);
 
   res.status(201).json({
-    message: "Product added to cart.",
-    cart
+    message: "Ürün sepete eklendi.",
+    cart: normalizeCartResponse(cart)
   });
 });
 
@@ -83,7 +130,7 @@ export const updateCartItem = asyncHandler(async (req, res) => {
   const item = cart.items.id(req.params.itemId);
 
   if (!item) {
-    return res.status(404).json({ message: "Cart item not found." });
+    return res.status(404).json({ message: "Sepet ürünü bulunamadı." });
   }
 
   item.quantity = Number(req.body.quantity);
@@ -92,8 +139,8 @@ export const updateCartItem = asyncHandler(async (req, res) => {
   await populateCart(cart);
 
   res.json({
-    message: "Cart item updated.",
-    cart
+    message: "Sepet ürünü güncellendi.",
+    cart: normalizeCartResponse(cart)
   });
 });
 
@@ -102,7 +149,7 @@ export const removeCartItem = asyncHandler(async (req, res) => {
   const item = cart.items.id(req.params.itemId);
 
   if (!item) {
-    return res.status(404).json({ message: "Cart item not found." });
+    return res.status(404).json({ message: "Sepet ürünü bulunamadı." });
   }
 
   item.deleteOne();
@@ -111,8 +158,8 @@ export const removeCartItem = asyncHandler(async (req, res) => {
   await populateCart(cart);
 
   res.json({
-    message: "Cart item removed.",
-    cart
+    message: "Ürün sepetten kaldırıldı.",
+    cart: normalizeCartResponse(cart)
   });
 });
 
@@ -123,7 +170,7 @@ export const clearCart = asyncHandler(async (req, res) => {
   await cart.save();
 
   res.json({
-    message: "Cart cleared successfully.",
+    message: "Sepet temizlendi.",
     cart
   });
 });

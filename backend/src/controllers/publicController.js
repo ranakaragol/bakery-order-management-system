@@ -2,11 +2,14 @@ import Category from "../models/Category.js";
 import ContactInfo from "../models/ContactInfo.js";
 import Product from "../models/Product.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { normalizeProductResponse } from "../utils/normalizeProductResponse.js";
+
+const legacyCakeSizeNames = ["Tek Pasta", "0 No Pasta", "1 No Pasta", "2 No Pasta"];
 
 export const getHomeData = asyncHandler(async (req, res) => {
   const [categories, featuredProducts, contactInfo] = await Promise.all([
     Category.find().sort({ isFeatured: -1, name: 1 }),
-    Product.find({ featured: true }).populate("category", "name slug").limit(6),
+    Product.find({ featured: true, name: { $nin: legacyCakeSizeNames } }).populate("category", "name slug").limit(6),
     ContactInfo.findOne().sort({ createdAt: -1 })
   ]);
 
@@ -17,11 +20,11 @@ export const getHomeData = asyncHandler(async (req, res) => {
           description: contactInfo.heroDescription
         }
       : {
-          title: "Tasarlanmis kutlama lezzetleri",
-          description: "Kutlamalara, toplantilara ve gundelik keyiflere ozel pastacilik deneyimi."
+          title: "Lezzetin ve ustalığın buluştuğu özel tatlar.",
+          description: "Özenle hazırlanan tatlar, güvenle sunulan lezzetler."
         },
     categories,
-    featuredProducts,
+    featuredProducts: featuredProducts.map(normalizeProductResponse),
     contactInfo
   });
 });

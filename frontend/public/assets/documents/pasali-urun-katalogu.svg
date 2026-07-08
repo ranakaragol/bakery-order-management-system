@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900">
+  <rect width="1200" height="900" fill="#efe1d2"/>
+  <rect x="72" y="72" width="1056" height="756" rx="36" fill="#fffaf3" stroke="#c89d7f" stroke-width="6"/>
+  <text x="120" y="180" fill="#5d0f20" font-family="Georgia, serif" font-size="58" font-weight="700">Pasali Urun Katalogu</text>
+  <text x="120" y="244" fill="#9f6d54" font-family="Arial, sans-serif" font-size="30">PDF ayristirilana kadar onizleme placeholder</text>
+  <text x="120" y="340" fill="#5d0f20" font-family="Arial, sans-serif" font-size="34">Gercek PDF dosyasini</text>
+  <text x="120" y="392" fill="#5d0f20" font-family="Arial, sans-serif" font-size="34">frontend/public/assets/documents/pasali-urun-katalogu.pdf</text>
+  <text x="120" y="444" fill="#5d0f20" font-family="Arial, sans-serif" font-size="34">konumuna ekleyin.</text>
+</svg>

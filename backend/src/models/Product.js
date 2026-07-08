@@ -1,5 +1,28 @@
 import mongoose from "mongoose";
 
+const productVariantSchema = new mongoose.Schema(
+  {
+    id: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    name: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    price: {
+      type: Number,
+      required: true,
+      min: 0
+    }
+  },
+  {
+    _id: false
+  }
+);
+
 const productSchema = new mongoose.Schema(
   {
     name: {
@@ -20,18 +43,61 @@ const productSchema = new mongoose.Schema(
     },
     price: {
       type: Number,
-      required: true,
+      default: null,
       min: 0
+    },
+    displayPrice: {
+      type: String,
+      default: "Fiyat sorunuz",
+      trim: true
+    },
+    image: {
+      type: String,
+      required: true,
+      trim: true
     },
     imageUrl: {
       type: String,
-      required: true,
       trim: true
     },
     category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",
       required: true
+    },
+    unit: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    weight: {
+      type: String,
+      default: "",
+      trim: true
+    },
+    portion: {
+      type: String,
+      default: "",
+      trim: true
+    },
+    variants: {
+      type: [productVariantSchema],
+      default: []
+    },
+    shelfLife: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    storageCondition: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    catalogPage: {
+      type: Number,
+      default: null,
+      min: 1
     },
     stockStatus: {
       type: String,

@@ -53,12 +53,12 @@ const CheckoutPage = () => {
       await refreshCart();
       navigate("/orders");
     } catch (requestError) {
-      setError(requestError.response?.data?.message || "Siparis olusturulamadi.");
+      setError(requestError.response?.data?.message || "Sipariş oluşturulamadı.");
     }
   };
 
   if (!cart?.items?.length) {
-    return <section className="panel">Odeme icin sepetinizde urun bulunmali.</section>;
+    return <section className="panel">Ödeme için sepetinizde ürün bulunmalı.</section>;
   }
 
   const deliveryFee = subtotal >= 2500 ? 0 : 120;
@@ -67,11 +67,11 @@ const CheckoutPage = () => {
     <section className="checkout-layout">
       <form className="panel stack-md" onSubmit={handleSubmit}>
         <div className="section-heading">
-          <span className="eyebrow">Odeme</span>
-          <h1>Siparisi tamamla</h1>
+          <span className="eyebrow">Ödeme</span>
+          <h1>Siparişi tamamla</h1>
         </div>
         <div className="info-banner">
-          Fatura bilgileri ilk siparis asamasinda alinir ve sonraki siparisleriniz icin hesabinizda saklanir.
+          Fatura bilgileri ilk sipariş aşamasında alınır ve sonraki siparişleriniz için hesabınızda saklanır.
         </div>
         <textarea
           placeholder="Teslimat adresi"
@@ -80,7 +80,7 @@ const CheckoutPage = () => {
           required
         />
         <textarea
-          placeholder="Siparis notu"
+          placeholder="Sipariş notu"
           value={form.notes}
           onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
         />
@@ -97,7 +97,7 @@ const CheckoutPage = () => {
             }
           />
           <input
-            placeholder="Sirket adi"
+            placeholder="Şirket adı"
             value={form.invoiceInfo.companyName}
             onChange={(event) =>
               setForm((current) => ({
@@ -107,7 +107,7 @@ const CheckoutPage = () => {
             }
           />
           <input
-            placeholder="Vergi numarasi"
+            placeholder="Vergi numarası"
             value={form.invoiceInfo.taxNumber}
             onChange={(event) =>
               setForm((current) => ({
@@ -127,7 +127,7 @@ const CheckoutPage = () => {
             }
           />
           <input
-            placeholder="Fatura e-postasi"
+            placeholder="Fatura e-postası"
             type="email"
             value={form.invoiceInfo.email}
             onChange={(event) =>
@@ -161,12 +161,12 @@ const CheckoutPage = () => {
         />
         {error && <p className="error-text">{error}</p>}
         <button type="submit" className="primary-button">
-          Odemeyi Tamamla ve Siparis Ver
+          Ödemeyi Tamamla ve Sipariş Ver
         </button>
       </form>
 
       <aside className="summary-card">
-        <h2>Odeme Ozeti</h2>
+        <h2>Ödeme Özeti</h2>
         {cart.items.map((item) => (
           <div key={item._id} className="summary-row">
             <span>

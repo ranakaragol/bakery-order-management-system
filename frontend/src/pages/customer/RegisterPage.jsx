@@ -32,7 +32,7 @@ const RegisterPage = () => {
     setError("");
 
     if (form.password !== form.confirmPassword) {
-      setError("Sifreler eslesmiyor.");
+      setError("Şifreler eşleşmiyor.");
       return;
     }
 
@@ -47,32 +47,32 @@ const RegisterPage = () => {
       });
       navigate(nextPath || "/");
     } catch (requestError) {
-      setError(requestError.response?.data?.message || "Kayit islemi tamamlanamadi.");
+      setError(requestError.response?.data?.message || "Kayıt işlemi tamamlanamadı.");
     }
   };
 
   return (
     <section className="auth-shell">
       <form className="auth-card auth-card--wide" onSubmit={handleSubmit}>
-        <span className="eyebrow">Yeni Uyelik</span>
-        <h1>Musteri hesabi olusturun</h1>
+        <span className="eyebrow">Yeni Üyelik</span>
+        <h1>Müşteri hesabı oluşturun</h1>
         <div className="info-banner">
-          Fatura bilgileri bu asamada alinmiyor. Ilk siparisinizi olustururken gerekli alanlari doldurabilirsiniz.
+          Fatura bilgileri bu aşamada alınmıyor. İlk siparişinizi oluştururken gerekli alanları doldurabilirsiniz.
         </div>
         {intent === "cart" && (
           <div className="helper-text helper-text--panel">
-            Hesabinizi olusturduktan sonra urun detayina donup sepete eklemeye devam edebilirsiniz.
+            Hesabınızı oluşturduktan sonra ürün detayına dönüp sepete eklemeye devam edebilirsiniz.
           </div>
         )}
         <div className="form-grid">
           <input name="firstName" placeholder="Ad" required value={form.firstName} onChange={handleChange} />
           <input name="lastName" placeholder="Soyad" required value={form.lastName} onChange={handleChange} />
           <input name="email" type="email" placeholder="E-posta" required value={form.email} onChange={handleChange} />
-          <input name="phone" placeholder="GSM Numarasi" required value={form.phone} onChange={handleChange} />
+          <input name="phone" placeholder="GSM Numarası" required value={form.phone} onChange={handleChange} />
           <input
             name="password"
             type="password"
-            placeholder="Sifre"
+            placeholder="Şifre"
             required
             value={form.password}
             onChange={handleChange}
@@ -80,7 +80,7 @@ const RegisterPage = () => {
           <input
             name="confirmPassword"
             type="password"
-            placeholder="Sifre Tekrari"
+            placeholder="Şifre Tekrarı"
             required
             value={form.confirmPassword}
             onChange={handleChange}
@@ -95,10 +95,10 @@ const RegisterPage = () => {
         />
         {error && <p className="error-text">{error}</p>}
         <button type="submit" className="primary-button" disabled={loading}>
-          Hesap Olustur
+          Hesap Oluştur
         </button>
         <p>
-          Zaten hesabiniz var mi? <Link to={loginLink}>Giris yapin</Link>
+          Zaten hesabınız var mı? <Link to={loginLink}>Giriş yapın</Link>
         </p>
       </form>
     </section>

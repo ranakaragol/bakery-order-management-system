@@ -17,7 +17,7 @@ export const createCategory = asyncHandler(async (req, res) => {
   });
 
   res.status(201).json({
-    message: "Category created successfully.",
+    message: "Kategori başarıyla oluşturuldu.",
     category
   });
 });
@@ -26,7 +26,7 @@ export const updateCategory = asyncHandler(async (req, res) => {
   const category = await Category.findById(req.params.id);
 
   if (!category) {
-    return res.status(404).json({ message: "Category not found." });
+    return res.status(404).json({ message: "Kategori bulunamadı." });
   }
 
   Object.assign(category, req.body);
@@ -38,7 +38,7 @@ export const updateCategory = asyncHandler(async (req, res) => {
   await category.save();
 
   res.json({
-    message: "Category updated successfully.",
+    message: "Kategori başarıyla güncellendi.",
     category
   });
 });
@@ -47,20 +47,20 @@ export const deleteCategory = asyncHandler(async (req, res) => {
   const category = await Category.findById(req.params.id);
 
   if (!category) {
-    return res.status(404).json({ message: "Category not found." });
+    return res.status(404).json({ message: "Kategori bulunamadı." });
   }
 
   const linkedProducts = await Product.countDocuments({ category: category._id });
 
   if (linkedProducts > 0) {
     return res.status(400).json({
-      message: "This category cannot be deleted while products are still assigned to it."
+      message: "Bu kategoriye bağlı ürünler varken kategori silinemez."
     });
   }
 
   await category.deleteOne();
 
   res.json({
-    message: "Category deleted successfully."
+    message: "Kategori başarıyla silindi."
   });
 });
