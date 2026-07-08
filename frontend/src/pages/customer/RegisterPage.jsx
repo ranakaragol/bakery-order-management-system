@@ -54,8 +54,11 @@ const RegisterPage = () => {
   return (
     <section className="auth-shell">
       <form className="auth-card auth-card--wide" onSubmit={handleSubmit}>
-        <span className="eyebrow">Yeni Üyelik</span>
-        <h1>Müşteri hesabı oluşturun</h1>
+        <div className="auth-intro">
+          <span className="eyebrow">Yeni Üyelik</span>
+          <h1 className="auth-title">Müşteri hesabı oluşturun</h1>
+          <p className="auth-subtitle">Siparişlerinizi takip etmek ve alışverişe hızlıca başlamak için kaydolun.</p>
+        </div>
         <div className="info-banner">
           Fatura bilgileri bu aşamada alınmıyor. İlk siparişinizi oluştururken gerekli alanları doldurabilirsiniz.
         </div>

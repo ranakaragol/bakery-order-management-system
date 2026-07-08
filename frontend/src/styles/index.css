@@ -458,11 +458,31 @@ textarea {
 .auth-card {
   width: min(100%, 32rem);
   display: grid;
-  gap: 0.9rem;
+  gap: 1rem;
 }
 
 .auth-card--wide {
   width: min(100%, 54rem);
+}
+
+.auth-intro {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.auth-title {
+  margin: 0.1rem 0 0;
+  font-size: clamp(1.55rem, 3.2vw, 2.35rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.auth-subtitle {
+  margin: 0;
+  max-width: 34rem;
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1.6;
 }
 
 .form-grid {

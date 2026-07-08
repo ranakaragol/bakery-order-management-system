@@ -32,8 +32,11 @@ const LoginPage = () => {
   return (
     <section className="auth-shell">
       <form className="auth-card" onSubmit={handleSubmit}>
-        <span className="eyebrow">Tek Giriş</span>
-        <h1>Hesabınıza veya yönetim paneline girin</h1>
+        <div className="auth-intro">
+          <span className="eyebrow">Tek Giriş</span>
+          <h1 className="auth-title">Hesabınıza giriş yapın</h1>
+          <p className="auth-subtitle">Müşteri hesabınıza veya yönetim panelinize güvenle erişin.</p>
+        </div>
         {intent === "cart" && (
           <div className="info-banner">
             Sepete ürün eklemek için önce giriş yapmanız veya yeni hesap oluşturmanız gerekiyor.
