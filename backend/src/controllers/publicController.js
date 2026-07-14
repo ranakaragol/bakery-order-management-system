@@ -1,12 +1,15 @@
 import Category from "../models/Category.js";
 import ContactInfo from "../models/ContactInfo.js";
 import Product from "../models/Product.js";
+import { pasaliContactInfo } from "../../../shared/pasaliCatalogData.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { ensureCatalogDataSynchronized } from "../utils/catalogSync.js";
 import { normalizeProductResponse } from "../utils/normalizeProductResponse.js";
 
 const legacyCakeSizeNames = ["Tek Pasta", "0 No Pasta", "1 No Pasta", "2 No Pasta"];
 
 export const getHomeData = asyncHandler(async (req, res) => {
+  await ensureCatalogDataSynchronized();
   const [categories, featuredProducts, contactInfo] = await Promise.all([
     Category.find().sort({ isFeatured: -1, name: 1 }),
     Product.find({ featured: true, name: { $nin: legacyCakeSizeNames } }).populate("category", "name slug").limit(6),
@@ -31,5 +34,5 @@ export const getHomeData = asyncHandler(async (req, res) => {
 
 export const getPublicContactInfo = asyncHandler(async (req, res) => {
   const contactInfo = await ContactInfo.findOne().sort({ createdAt: -1 });
-  res.json(contactInfo);
+  res.json(contactInfo || pasaliContactInfo);
 });

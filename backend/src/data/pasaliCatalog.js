@@ -28,7 +28,8 @@ export const productSeeds = productDefinitions.map((product) => ({
   stockStatus: product.stockStatus,
   stockQuantity: product.stockQuantity,
   featured: product.featured,
-  catalogPage: product.catalogPage
+  catalogPage: product.catalogPage,
+  isActive: true
 }));
 
 export const contactSeed = {

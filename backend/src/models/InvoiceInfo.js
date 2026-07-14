@@ -14,17 +14,17 @@ const invoiceInfoSchema = new mongoose.Schema(
     companyName: {
       type: String,
       trim: true,
-      default: ""
+      required: true
     },
     taxNumber: {
       type: String,
       trim: true,
-      default: ""
+      required: true
     },
     taxOffice: {
       type: String,
       trim: true,
-      default: ""
+      required: true
     },
     identityNumber: {
       type: String,
@@ -39,13 +39,13 @@ const invoiceInfoSchema = new mongoose.Schema(
     phone: {
       type: String,
       trim: true,
-      default: ""
+      required: true
     },
     email: {
       type: String,
       trim: true,
       lowercase: true,
-      default: ""
+      required: true
     }
   },
   {

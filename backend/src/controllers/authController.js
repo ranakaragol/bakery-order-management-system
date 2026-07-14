@@ -1,8 +1,13 @@
-import InvoiceInfo from "../models/InvoiceInfo.js";
 import User from "../models/User.js";
+import InvoiceInfo from "../models/InvoiceInfo.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { generateToken } from "../utils/generateToken.js";
 import { sanitizeUser } from "../utils/sanitizeUser.js";
+import {
+  hasCompleteBillingAddress,
+  mapBillingAddressToInvoiceInfo,
+  normalizeBillingAddress
+} from "../../../shared/profile.js";
 
 export const register = asyncHandler(async (req, res) => {
   const { firstName, lastName, email, password, phone, address } = req.body;
@@ -55,7 +60,15 @@ export const getCurrentUser = asyncHandler(async (req, res) => {
 });
 
 export const updateProfile = asyncHandler(async (req, res) => {
-  const fields = ["firstName", "lastName", "email", "phone", "address", "password"];
+  const fields = ["firstName", "lastName", "email", "phone", "address"];
+
+  if (req.body.email && req.body.email !== req.user.email) {
+    const existingUser = await User.findOne({ email: req.body.email });
+
+    if (existingUser && existingUser._id.toString() !== req.user._id.toString()) {
+      return res.status(409).json({ message: "Bu e-posta adresi zaten kullanımda." });
+    }
+  }
 
   fields.forEach((field) => {
     if (req.body[field] !== undefined) {
@@ -63,30 +76,69 @@ export const updateProfile = asyncHandler(async (req, res) => {
     }
   });
 
-  await req.user.save();
+  if (req.body.billingAddress) {
+    const normalizedBillingAddress = normalizeBillingAddress(req.body.billingAddress);
+    req.user.billingAddress = normalizedBillingAddress;
 
-  const incomingInvoiceInfo = req.body.invoiceInfo || {};
-  let invoiceInfo = req.user.invoiceInfo;
+    if (hasCompleteBillingAddress(normalizedBillingAddress)) {
+      if (req.user.invoiceInfo) {
+        const existingInvoiceInfo = await InvoiceInfo.findById(req.user.invoiceInfo._id || req.user.invoiceInfo);
 
-  if (invoiceInfo) {
-    invoiceInfo = await InvoiceInfo.findById(invoiceInfo._id || invoiceInfo);
-    Object.assign(invoiceInfo, incomingInvoiceInfo);
-    await invoiceInfo.save();
-  } else if (Object.keys(incomingInvoiceInfo).length > 0) {
-    invoiceInfo = await InvoiceInfo.create({
-      ...incomingInvoiceInfo,
-      user: req.user._id,
-      email: incomingInvoiceInfo.email || req.user.email,
-      phone: incomingInvoiceInfo.phone || req.user.phone
-    });
-    req.user.invoiceInfo = invoiceInfo._id;
-    await req.user.save();
+        if (existingInvoiceInfo) {
+          Object.assign(
+            existingInvoiceInfo,
+            mapBillingAddressToInvoiceInfo(normalizedBillingAddress, existingInvoiceInfo.toObject())
+          );
+          await existingInvoiceInfo.save();
+        } else {
+          const invoiceInfo = await InvoiceInfo.create({
+            ...mapBillingAddressToInvoiceInfo(normalizedBillingAddress),
+            user: req.user._id
+          });
+
+          req.user.invoiceInfo = invoiceInfo._id;
+        }
+      } else {
+        const invoiceInfo = await InvoiceInfo.create({
+          ...mapBillingAddressToInvoiceInfo(normalizedBillingAddress),
+          user: req.user._id
+        });
+
+        req.user.invoiceInfo = invoiceInfo._id;
+      }
+    }
   }
+
+  await req.user.save();
 
   const updatedUser = await User.findById(req.user._id).populate("invoiceInfo");
 
   res.json({
     message: "Profil başarıyla güncellendi.",
     user: sanitizeUser(updatedUser)
+  });
+});
+
+export const getProfile = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id).populate("invoiceInfo");
+
+  res.json({
+    user: sanitizeUser(user)
+  });
+});
+
+export const updatePassword = asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const user = await User.findById(req.user._id).select("+password").populate("invoiceInfo");
+
+  if (!user || !(await user.comparePassword(currentPassword))) {
+    return res.status(400).json({ message: "Mevcut şifre hatalı." });
+  }
+
+  user.password = newPassword;
+  await user.save();
+
+  res.json({
+    message: "Şifre başarıyla güncellendi."
   });
 });

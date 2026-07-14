@@ -3,18 +3,41 @@ import ContactInfo from "../models/ContactInfo.js";
 import Order from "../models/Order.js";
 import Product from "../models/Product.js";
 import User from "../models/User.js";
+import { pasaliContactInfo } from "../../../shared/pasaliCatalogData.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { ensureCatalogDataSynchronized } from "../utils/catalogSync.js";
 import { sanitizeUser } from "../utils/sanitizeUser.js";
 
 const legacyCakeSizeNames = ["Tek Pasta", "0 No Pasta", "1 No Pasta", "2 No Pasta"];
 
 export const getDashboard = asyncHandler(async (req, res) => {
-  const [productCount, categoryCount, customerCount, orderCount, recentOrders] = await Promise.all([
+  await ensureCatalogDataSynchronized();
+  const [
+    productCount,
+    categoryCount,
+    customerCount,
+    orderCount,
+    bankTransferOrderCount,
+    cashOnDeliveryOrderCount,
+    recentOrders,
+    recentBankTransferOrders,
+    recentCashOrders
+  ] = await Promise.all([
     Product.countDocuments({ name: { $nin: legacyCakeSizeNames } }),
     Category.countDocuments(),
     User.countDocuments({ role: "customer" }),
     Order.countDocuments(),
+    Order.countDocuments({ paymentMethod: "bank_transfer" }),
+    Order.countDocuments({ paymentMethod: "cash_on_delivery" }),
     Order.find()
+      .populate("user", "firstName lastName email")
+      .sort({ createdAt: -1 })
+      .limit(5),
+    Order.find({ paymentMethod: "bank_transfer" })
+      .populate("user", "firstName lastName email")
+      .sort({ createdAt: -1 })
+      .limit(5),
+    Order.find({ paymentMethod: "cash_on_delivery" })
       .populate("user", "firstName lastName email")
       .sort({ createdAt: -1 })
       .limit(5)
@@ -25,9 +48,13 @@ export const getDashboard = asyncHandler(async (req, res) => {
       productCount,
       categoryCount,
       customerCount,
-      orderCount
+      orderCount,
+      bankTransferOrderCount,
+      cashOnDeliveryOrderCount
     },
-    recentOrders
+    recentOrders,
+    recentBankTransferOrders,
+    recentCashOrders
   });
 });
 
@@ -84,15 +111,26 @@ export const getContactInfo = asyncHandler(async (req, res) => {
 
   res.json(
     contactInfo || {
-      heroTitle: "",
-      heroDescription: "",
-      phone: "",
-      email: "",
-      address: "",
+      heroTitle: pasaliContactInfo.heroTitle,
+      heroDescription: pasaliContactInfo.heroDescription,
+      phone: pasaliContactInfo.phone,
+      email: pasaliContactInfo.email,
+      address: pasaliContactInfo.address,
       mapUrl: "",
-      workingHours: "",
+      workingHours: pasaliContactInfo.workingHours,
+      aboutContent: {
+        titleTr: pasaliContactInfo.aboutContent.titleTr,
+        bodyTr: pasaliContactInfo.aboutContent.bodyTr,
+        titleEn: pasaliContactInfo.aboutContent.titleEn,
+        bodyEn: pasaliContactInfo.aboutContent.bodyEn
+      },
+      paymentDetails: {
+        accountHolder: pasaliContactInfo.paymentDetails.accountHolder,
+        iban: pasaliContactInfo.paymentDetails.iban,
+        bankName: pasaliContactInfo.paymentDetails.bankName
+      },
       socialLinks: {
-        instagram: "",
+        instagram: pasaliContactInfo.socialLinks.instagram,
         facebook: "",
         whatsapp: ""
       }
@@ -111,7 +149,7 @@ export const upsertContactInfo = asyncHandler(async (req, res) => {
   }
 
   res.json({
-    message: "İletişim bilgileri başarıyla güncellendi.",
+    message: "Site bilgileri başarıyla güncellendi.",
     contactInfo
   });
 });

@@ -58,7 +58,8 @@ const seedDatabase = async () => {
       catalogPage: product.catalogPage,
       stockStatus: product.stockStatus,
       stockQuantity: product.stockQuantity,
-      featured: product.featured
+      featured: product.featured,
+      isActive: product.isActive !== false
     }))
   );
 

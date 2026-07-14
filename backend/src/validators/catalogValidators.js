@@ -50,5 +50,6 @@ export const productValidator = [
   body("stockQuantity")
     .optional()
     .isInt({ min: 0 })
-    .withMessage("Stok miktarı sıfırdan küçük olamaz.")
+    .withMessage("Stok miktarı sıfırdan küçük olamaz."),
+  body("isActive").optional().isBoolean().withMessage("Aktiflik durumu geçerli olmalıdır.")
 ];

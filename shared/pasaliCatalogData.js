@@ -718,7 +718,7 @@ export const productDefinitions = [
   createProduct({
     id: "mozaik-pasta",
     name: "Mozaik Pasta",
-    category: "Tepsi Tatlıları",
+    category: "Petifür",
     image: "/assets/products/pasali-catalog/tepsi-tatlilari/mozaik-pasta.jpg",
     price: 440,
     unit: "Kg",
@@ -831,8 +831,21 @@ export const pasaliContactInfo = {
   email: "toptanpastacin@gmail.com",
   address: "Sipariş ve katalog teyidi için iletişime geçin.",
   workingHours: "Gece üretim, sabah dağıtım",
+  aboutContent: {
+    titleTr: "TOPTAN LEZZETİN GÜVENİLİR MARKASI",
+    bodyTr:
+      "2025 yılından bu yana Paşalı Patiserrie, toptan pasta ve petifür üretiminde kalite, estetik ve lezzeti aynı potada buluşturarak sektöründe fark yaratan bir marka olma yolunda ilerlemektedir. Her ürünümüzde yalnızca bir tatlı değil; ustalığı, titizliği ve mükemmelliğe olan bağlılığımızı sunuyoruz.\n\nEn kaliteli malzemelerle, özenle hazırladığımız pasta ve petifürlerimizi güçlü üretim ve dağıtım altyapımızla işletmelere daima taze, güvenilir ve eksiksiz şekilde ulaştırıyoruz. Çünkü biliyoruz ki, gerçek başarı yalnızca ürün üretmekle değil, güven inşa etmekle mümkündür.\n\nBugün Paşalı Patiserrie, sadece toptan pasta ve petifür tedarik eden bir firma değildir. Biz; işletmelerin vitrininin lezzetini yükselten, müşterilerine değer katan ve her iş birliğini uzun soluklu bir ortaklık olarak gören güçlü bir çözüm ortağıyız.\n\nPaşalı Patiserrie… Her lokmada ustalık, her teslimatta güven, her iş ortaklığında kalıcı değer.",
+    titleEn: "THE TRUSTED BRAND IN WHOLESALE DELICACIES",
+    bodyEn:
+      "Since 2025, Paşalı Patiserrie has been bringing together quality, elegance, and exceptional taste in wholesale cake and petit four production, steadily establishing itself as a distinctive name in the industry.\n\nIn every product we create, we offer not just a dessert, but a reflection of our craftsmanship, meticulous attention to detail, and commitment to excellence.\n\nUsing the finest ingredients, we carefully prepare our cakes and petit fours and deliver them to businesses fresh, reliable, and complete through our strong production and distribution network. Because we believe that true success is built not only by producing exceptional products but also by earning trust.\n\nToday, Paşalı Patiserrie is more than a wholesale supplier of cakes and petit fours. We are a trusted business partner that enhances the value of our clients’ showcases, contributes to their success, and views every collaboration as a long-term partnership.\n\nPaşalı Patiserrie… Craftsmanship in every bite, trust in every delivery, and lasting value in every partnership."
+  },
+  paymentDetails: {
+    accountHolder: "Serpil Günay",
+    iban: "TR30 0015 7000 0000 0204 0607 09",
+    bankName: "Enpara Bank A.Ş."
+  },
   socialLinks: {
-    instagram: "instagram.com/toptanpastacin",
+    instagram: "https://www.instagram.com/toptanpastacin?utm_source=qr",
     facebook: "facebook.com/pasalipatiserrie",
     whatsapp: "https://wa.me/905423158535"
   }

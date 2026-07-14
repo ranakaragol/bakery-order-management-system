@@ -1,8 +1,57 @@
+import {
+  DELIVERY_FEE,
+  calculateLineTotal,
+  isKilogramUnit,
+  normalizeUnit
+} from "../../../shared/commerce.js";
+
 export const formatCurrency = (value = 0) =>
   new Intl.NumberFormat("tr-TR", {
     style: "currency",
     currency: "TRY"
   }).format(value);
+
+export const formatQuantityValue = (value = 0) =>
+  new Intl.NumberFormat("tr-TR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 1
+  }).format(Number(value || 0));
+
+export const formatUnitLabel = (unit = "") => {
+  if (isKilogramUnit(unit)) {
+    return "kg";
+  }
+
+  const normalizedUnit = normalizeUnit(unit);
+
+  return normalizedUnit || String(unit || "").trim();
+};
+
+export const formatQuantity = (value = 0, unit = "", includeUnit = true) => {
+  const formattedValue = formatQuantityValue(value);
+
+  if (!includeUnit) {
+    return formattedValue;
+  }
+
+  const unitLabel = formatUnitLabel(unit);
+
+  return unitLabel ? `${formattedValue} ${unitLabel}` : formattedValue;
+};
+
+export const formatUnitPrice = (value = 0, unit = "") => {
+  if (!Number.isFinite(Number(value))) {
+    return "Fiyat sorunuz";
+  }
+
+  const unitLabel = formatUnitLabel(unit);
+
+  return unitLabel ? `${formatCurrency(value)} / ${unitLabel}` : formatCurrency(value);
+};
+
+export const formatLineTotal = (unitPrice = 0, quantity = 0) => formatCurrency(calculateLineTotal(unitPrice, quantity));
+
+export const formatDeliveryFee = (value = DELIVERY_FEE) => (Number(value || 0) === 0 ? "Ücretsiz" : formatCurrency(value));
 
 export const hasProductVariants = (product) => Array.isArray(product?.variants) && product.variants.length > 0;
 
@@ -46,13 +95,13 @@ export const formatProductPrice = (product) => {
     return "Fiyat sorunuz";
   }
 
-  return product?.unit ? `${formatCurrency(product.price)} / ${product.unit}` : formatCurrency(product.price);
+  return product?.unit ? formatUnitPrice(product.price, product.unit) : formatCurrency(product.price);
 };
 
 export const getProductImage = (product) =>
   product?.image || product?.imageUrl || "/assets/products/catalog-placeholder.svg";
 
-export const isTrayOnlyProduct = (product) => product?.unit === "Tepsi";
+export const isTrayOnlyProduct = (product) => normalizeUnit(product?.unit) === "tepsi";
 
 export const formatDate = (value) =>
   new Intl.DateTimeFormat("tr-TR", {
@@ -68,6 +117,20 @@ const orderStatusLabels = {
 };
 
 export const formatOrderStatus = (value) => orderStatusLabels[value] || value;
+
+const paymentMethodLabels = {
+  bank_transfer: "Havale & EFT",
+  cash_on_delivery: "Teslimatta Nakit Ödeme"
+};
+
+export const formatPaymentMethod = (value) => paymentMethodLabels[value] || value;
+
+const paymentStatusLabels = {
+  paid: "Ödendi",
+  unpaid: "Ödeme Bekleniyor"
+};
+
+export const formatPaymentStatus = (value) => paymentStatusLabels[value] || value;
 
 export const stockLabels = {
   in_stock: "Stokta",

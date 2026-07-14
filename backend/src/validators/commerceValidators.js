@@ -1,28 +1,59 @@
 import { body } from "express-validator";
+import { sanitizeQuantity } from "../../../shared/commerce.js";
 
 export const addToCartValidator = [
   body("productId").trim().notEmpty().withMessage("Ürün kimliği zorunludur."),
   body("variantId").optional({ values: "falsy" }).trim(),
-  body("quantity").optional().isInt({ min: 1 }).withMessage("Adet en az 1 olmalıdır.")
+  body("quantity")
+    .optional()
+    .customSanitizer((value) => sanitizeQuantity(value))
+    .custom((value) => Number.isFinite(value) && value >= 0.1)
+    .withMessage("Miktar en az 0.1 olmalıdır.")
 ];
 
 export const updateCartItemValidator = [
-  body("quantity").isInt({ min: 1 }).withMessage("Adet en az 1 olmalıdır.")
+  body("quantity")
+    .customSanitizer((value) => sanitizeQuantity(value))
+    .custom((value) => Number.isFinite(value) && value >= 0.1)
+    .withMessage("Miktar en az 0.1 olmalıdır.")
 ];
 
 export const createOrderValidator = [
   body("address").trim().notEmpty().withMessage("Teslimat adresi zorunludur."),
   body("notes").optional().isString().withMessage("Sipariş notu metin olmalıdır."),
+  body("paymentMethod")
+    .trim()
+    .isIn(["bank_transfer", "cash_on_delivery"])
+    .withMessage("Geçerli bir ödeme yöntemi seçilmelidir."),
   body("invoiceInfo.fullName")
-    .optional()
     .trim()
     .notEmpty()
-    .withMessage("Fatura adı boş bırakılamaz."),
+    .withMessage("Fatura ad soyad zorunludur."),
+  body("invoiceInfo.companyName")
+    .trim()
+    .notEmpty()
+    .withMessage("Şirket adı zorunludur."),
+  body("invoiceInfo.taxNumber")
+    .trim()
+    .notEmpty()
+    .withMessage("Vergi numarası zorunludur."),
+  body("invoiceInfo.taxOffice")
+    .trim()
+    .notEmpty()
+    .withMessage("Vergi dairesi zorunludur."),
   body("invoiceInfo.billingAddress")
-    .optional()
     .trim()
     .notEmpty()
-    .withMessage("Fatura adresi boş bırakılamaz.")
+    .withMessage("Fatura adresi zorunludur."),
+  body("invoiceInfo.phone")
+    .trim()
+    .notEmpty()
+    .withMessage("Fatura telefonu zorunludur."),
+  body("invoiceInfo.email")
+    .trim()
+    .notEmpty()
+    .isEmail()
+    .withMessage("Geçerli bir fatura e-postası zorunludur.")
 ];
 
 export const statusValidator = [
@@ -38,5 +69,12 @@ export const contactValidator = [
   body("email").isEmail().withMessage("Geçerli bir e-posta adresi girilmelidir."),
   body("address").trim().notEmpty().withMessage("Adres zorunludur."),
   body("workingHours").trim().notEmpty().withMessage("Çalışma saatleri zorunludur."),
+  body("aboutContent.titleTr").trim().notEmpty().withMessage("Türkçe hakkımızda başlığı zorunludur."),
+  body("aboutContent.bodyTr").trim().notEmpty().withMessage("Türkçe hakkımızda metni zorunludur."),
+  body("aboutContent.titleEn").trim().notEmpty().withMessage("İngilizce hakkımızda başlığı zorunludur."),
+  body("aboutContent.bodyEn").trim().notEmpty().withMessage("İngilizce hakkımızda metni zorunludur."),
+  body("paymentDetails.accountHolder").trim().notEmpty().withMessage("IBAN ad soyad bilgisi zorunludur."),
+  body("paymentDetails.iban").trim().notEmpty().withMessage("IBAN bilgisi zorunludur."),
+  body("paymentDetails.bankName").trim().notEmpty().withMessage("Banka adı zorunludur."),
   body("mapUrl").optional({ values: "falsy" }).trim()
 ];

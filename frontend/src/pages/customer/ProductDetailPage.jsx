@@ -1,18 +1,30 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import api from "../../api/client";
+import { publicApi } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 import { fallbackProducts } from "../../utils/fallbackContent";
 import {
   canOrderProduct,
+  formatDeliveryFee,
   formatCurrency,
+  formatLineTotal,
   formatProductPrice,
+  formatQuantity,
+  formatUnitPrice,
   getProductImage,
   hasProductVariants,
   isTrayOnlyProduct,
   stockLabels
 } from "../../utils/formatters";
+import {
+  decrementQuantity,
+  getDefaultQuantity,
+  incrementQuantity,
+  isValidQuantityForUnit,
+  normalizeQuantity,
+  sanitizeQuantity
+} from "../../../../shared/commerce.js";
 
 const ProductDetailPage = () => {
   const { id } = useParams();
@@ -20,20 +32,25 @@ const ProductDetailPage = () => {
   const { addToCart } = useCart();
   const navigate = useNavigate();
   const [product, setProduct] = useState(null);
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState(getDefaultQuantity());
   const [selectedVariantId, setSelectedVariantId] = useState("");
+  const [cartError, setCartError] = useState("");
 
   useEffect(() => {
-    api
+    publicApi
       .get(`/products/${id}`)
       .then(({ data }) => {
         setProduct(data);
+        setQuantity(getDefaultQuantity());
         setSelectedVariantId("");
+        setCartError("");
       })
       .catch(() => {
         const fallbackProduct = fallbackProducts.find((item) => item._id === id);
         setProduct(fallbackProduct || null);
+        setQuantity(getDefaultQuantity());
         setSelectedVariantId("");
+        setCartError("");
       });
   }, [id]);
 
@@ -51,7 +68,20 @@ const ProductDetailPage = () => {
       return;
     }
 
-    await addToCart(product._id, quantity, selectedVariantId);
+    setCartError("");
+    const sanitizedQuantity = sanitizeQuantity(quantity);
+
+    if (!Number.isFinite(sanitizedQuantity) || !isValidQuantityForUnit(sanitizedQuantity, product.unit)) {
+      setCartError("Geçersiz miktar.");
+      return;
+    }
+
+    try {
+      await addToCart(product._id, normalizeQuantity(sanitizedQuantity, product.unit), selectedVariantId);
+      navigate("/cart");
+    } catch (error) {
+      setCartError("Ürün sepete eklenemedi.");
+    }
   };
 
   const selectedVariant = hasProductVariants(product)
@@ -59,6 +89,14 @@ const ProductDetailPage = () => {
     : null;
   const resolvedPrice = selectedVariant ? formatCurrency(selectedVariant.price) : formatProductPrice(product);
   const requiresVariantSelection = hasProductVariants(product) && !selectedVariant;
+  const resolvedUnit = selectedVariant ? "adet" : product?.unit;
+  const lineTotal = selectedVariant
+    ? formatLineTotal(selectedVariant.price, quantity)
+    : hasProductVariants(product)
+      ? null
+      : canOrderProduct(product)
+      ? formatLineTotal(product.price, quantity)
+      : null;
 
   if (!product) {
     return <div className="panel">Ürün yükleniyor...</div>;
@@ -130,14 +168,50 @@ const ProductDetailPage = () => {
 
         {user?.role !== "admin" && canOrderProduct(product) ? (
           <div className="quantity-box">
-            <label htmlFor="quantity">{product.unit === "Adet" ? "Adet" : "Miktar"}</label>
-            <input
-              id="quantity"
-              type="number"
-              min="1"
-              value={quantity}
-              onChange={(event) => setQuantity(Number(event.target.value))}
-            />
+            <label htmlFor="quantity-display">{product.unit === "Adet" ? "Adet" : "Miktar"}</label>
+            <div className="quantity-stepper">
+              <button
+                type="button"
+                className="ghost-button"
+                aria-label={`${product.name} miktarını azalt`}
+                onClick={() => setQuantity((current) => decrementQuantity(current, product.unit))}
+              >
+                -
+              </button>
+              <output id="quantity-display" className="quantity-stepper__value" aria-live="polite">
+                {formatQuantity(quantity, resolvedUnit)}
+              </output>
+              <button
+                type="button"
+                className="ghost-button"
+                aria-label={`${product.name} miktarını artır`}
+                onClick={() => setQuantity((current) => incrementQuantity(current, product.unit))}
+              >
+                +
+              </button>
+            </div>
+            <div className="detail-specs">
+              <div className="detail-spec">
+                <span>Birim fiyat</span>
+                <strong>
+                  {selectedVariant
+                    ? resolvedPrice
+                    : !hasProductVariants(product)
+                      ? formatUnitPrice(product.price, product.unit)
+                      : resolvedPrice}
+                </strong>
+              </div>
+              {lineTotal && (
+                <div className="detail-spec">
+                  <span>Toplam</span>
+                  <strong>{lineTotal}</strong>
+                </div>
+              )}
+              <div className="detail-spec">
+                <span>Teslimat</span>
+                <strong>{formatDeliveryFee()}</strong>
+              </div>
+            </div>
             <button
               type="button"
               className="primary-button"
@@ -147,6 +221,7 @@ const ProductDetailPage = () => {
               {hasProductVariants(product) ? "Boy Seçerek Sepete Ekle" : "Sepete Ekle"}
             </button>
             {requiresVariantSelection && <p className="helper-text">Sepete eklemek için önce pasta boyunu seçin.</p>}
+            {cartError && <p className="error-text">{cartError}</p>}
             {!user && (
               <p className="helper-text">
                 Sepete devam etmek için giriş veya kayıt adımına yönlendirilirsiniz.

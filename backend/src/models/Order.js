@@ -24,14 +24,24 @@ const orderItemSchema = new mongoose.Schema(
       default: "",
       trim: true
     },
+    unit: {
+      type: String,
+      default: "",
+      trim: true
+    },
     quantity: {
       type: Number,
       required: true,
-      min: 1
+      min: 0.1
     },
     unitPrice: {
       type: Number,
       required: true
+    },
+    lineTotal: {
+      type: Number,
+      default: 0,
+      min: 0
     }
   },
   {
@@ -67,7 +77,13 @@ const orderSchema = new mongoose.Schema(
     paymentStatus: {
       type: String,
       enum: ["paid", "unpaid"],
-      default: "paid"
+      default: "unpaid"
+    },
+    paymentMethod: {
+      type: String,
+      enum: ["bank_transfer", "cash_on_delivery"],
+      required: true,
+      default: "cash_on_delivery"
     },
     addressSnapshot: {
       type: String,

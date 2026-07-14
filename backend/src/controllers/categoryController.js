@@ -1,9 +1,11 @@
 import Category from "../models/Category.js";
 import Product from "../models/Product.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { ensureCatalogDataSynchronized } from "../utils/catalogSync.js";
 import { slugify } from "../utils/slugify.js";
 
 export const getCategories = asyncHandler(async (req, res) => {
+  await ensureCatalogDataSynchronized();
   const categories = await Category.find().sort({ isFeatured: -1, name: 1 });
   res.json(categories);
 });

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { getApiErrorMessage } from "../../utils/apiErrors";
 
 const initialForm = {
   firstName: "",
@@ -47,15 +48,18 @@ const RegisterPage = () => {
       });
       navigate(nextPath || "/");
     } catch (requestError) {
-      setError(requestError.response?.data?.message || "Kayıt işlemi tamamlanamadı.");
+      setError(getApiErrorMessage(requestError, "Kayıt işlemi tamamlanamadı."));
     }
   };
 
   return (
     <section className="auth-shell">
       <form className="auth-card auth-card--wide" onSubmit={handleSubmit}>
-        <span className="eyebrow">Yeni Üyelik</span>
-        <h1>Müşteri hesabı oluşturun</h1>
+        <div className="auth-intro">
+          <span className="eyebrow">Yeni Üyelik</span>
+          <h1 className="auth-title">Müşteri hesabı oluşturun</h1>
+          <p className="auth-subtitle">Siparişlerinizi takip etmek ve alışverişe hızlıca başlamak için kaydolun.</p>
+        </div>
         <div className="info-banner">
           Fatura bilgileri bu aşamada alınmıyor. İlk siparişinizi oluştururken gerekli alanları doldurabilirsiniz.
         </div>
@@ -98,7 +102,10 @@ const RegisterPage = () => {
           Hesap Oluştur
         </button>
         <p>
-          Zaten hesabınız var mı? <Link to={loginLink}>Giriş yapın</Link>
+          Zaten hesabınız var mı?{" "}
+          <Link to={loginLink} className="auth-link-subtle">
+            Giriş yapın
+          </Link>
         </p>
       </form>
     </section>

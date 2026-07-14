@@ -1,12 +1,38 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
-import { formatCurrency } from "../../utils/formatters";
+import {
+  formatCurrency,
+  formatDeliveryFee,
+  formatLineTotal,
+  formatQuantity,
+  formatUnitPrice
+} from "../../utils/formatters";
+import {
+  DELIVERY_FEE,
+  calculateOrderTotal,
+  decrementQuantity,
+  incrementQuantity,
+  normalizeQuantity,
+  sanitizeQuantity
+} from "../../../../shared/commerce.js";
 
 const CartPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { cart, updateCartItem, removeCartItem, subtotal } = useCart();
+  const totalAmount = calculateOrderTotal(subtotal, DELIVERY_FEE);
+
+  const handleQuantityChange = async (item, direction) => {
+    const resolvedUnit = item.unitSnapshot || item.product?.unit;
+    const currentQuantity = sanitizeQuantity(item.quantity);
+    const nextQuantity =
+      direction === "increase"
+        ? incrementQuantity(currentQuantity, resolvedUnit)
+        : decrementQuantity(currentQuantity, resolvedUnit);
+
+    await updateCartItem(item._id, normalizeQuantity(nextQuantity, resolvedUnit));
+  };
 
   if (!user) {
     return (
@@ -32,22 +58,28 @@ const CartPage = () => {
               <article key={item._id} className="cart-item">
                 <img src={item.imageUrlSnapshot} alt={item.nameSnapshot} />
                 <div className="cart-item__content">
-                  <h3>{item.nameSnapshot}</h3>
-                  <p>{formatCurrency(item.unitPrice)}</p>
-                  <p>Satır toplamı: {formatCurrency(item.unitPrice * item.quantity)}</p>
-                  <div className="quantity-inline">
+                  <h3>
+                    <Link to={`/products/${item.product?._id || item.product}`} className="cart-item__title-link">
+                      {item.nameSnapshot}
+                    </Link>
+                  </h3>
+                  <p>{formatUnitPrice(item.unitPrice, item.unitSnapshot || item.product?.unit)}</p>
+                  <p>Toplam: {formatLineTotal(item.unitPrice, item.quantity)}</p>
+                  <div className="quantity-inline quantity-inline--stepper">
                     <button
                       type="button"
                       className="ghost-button"
-                      onClick={() => updateCartItem(item._id, Math.max(1, item.quantity - 1))}
+                      aria-label={`${item.nameSnapshot} miktarını azalt`}
+                      onClick={() => handleQuantityChange(item, "decrease")}
                     >
                       -
                     </button>
-                    <span>{item.quantity}</span>
+                    <span>{formatQuantity(item.quantity, item.unitSnapshot || item.product?.unit)}</span>
                     <button
                       type="button"
                       className="ghost-button"
-                      onClick={() => updateCartItem(item._id, item.quantity + 1)}
+                      aria-label={`${item.nameSnapshot} miktarını artır`}
+                      onClick={() => handleQuantityChange(item, "increase")}
                     >
                       +
                     </button>
@@ -66,7 +98,14 @@ const CartPage = () => {
               <span>Ara Toplam</span>
               <strong>{formatCurrency(subtotal)}</strong>
             </div>
-            <p>2500 TL ve üzeri siparişlerde teslimat ücretsizdir.</p>
+            <div className="summary-row">
+              <span>Teslimat</span>
+              <strong>{formatDeliveryFee(DELIVERY_FEE)}</strong>
+            </div>
+            <div className="summary-row">
+              <span>Genel Toplam</span>
+              <strong>{formatCurrency(totalAmount)}</strong>
+            </div>
             <button type="button" className="primary-button" onClick={() => navigate("/checkout")}>
               Ödemeye Geç
             </button>

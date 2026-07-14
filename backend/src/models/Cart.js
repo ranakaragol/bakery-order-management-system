@@ -25,14 +25,24 @@ const cartItemSchema = new mongoose.Schema(
       default: "",
       trim: true
     },
+    unitSnapshot: {
+      type: String,
+      default: "",
+      trim: true
+    },
     quantity: {
       type: Number,
       required: true,
-      min: 1
+      min: 0.1
     },
     unitPrice: {
       type: Number,
       required: true,
+      min: 0
+    },
+    lineTotal: {
+      type: Number,
+      default: 0,
       min: 0
     }
   },

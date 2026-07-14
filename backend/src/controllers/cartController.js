@@ -1,13 +1,24 @@
 import Cart from "../models/Cart.js";
-import Product from "../models/Product.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { ensureCatalogProduct } from "../utils/catalogResolver.js";
 import { normalizeProductResponse } from "../utils/normalizeProductResponse.js";
+import {
+  calculateCartItemCount,
+  calculateCartSubtotal,
+  calculateLineTotal,
+  isValidQuantityForUnit,
+  normalizeQuantity
+} from "../../../shared/commerce.js";
 
 const recalculateCart = (cart) => {
-  cart.itemCount = cart.items.reduce((sum, item) => sum + item.quantity, 0);
-  cart.subtotal = Number(
-    cart.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0).toFixed(2)
-  );
+  cart.items.forEach((item) => {
+    item.quantity = item.unitSnapshot
+      ? normalizeQuantity(item.quantity, item.unitSnapshot)
+      : Number(item.quantity || 0);
+    item.lineTotal = calculateLineTotal(item.unitPrice, item.quantity);
+  });
+  cart.itemCount = calculateCartItemCount(cart.items);
+  cart.subtotal = calculateCartSubtotal(cart.items);
 };
 
 const populateCart = (cart) =>
@@ -35,7 +46,9 @@ const normalizeCartResponse = (cart) => {
       return {
         ...item,
         product: normalizedProduct,
-        nameSnapshot: normalizedNameSnapshot
+        nameSnapshot: normalizedNameSnapshot,
+        unitSnapshot: item.unitSnapshot || normalizedProduct.unit,
+        lineTotal: item.lineTotal ?? calculateLineTotal(item.unitPrice, item.quantity)
       };
     })
   };
@@ -58,13 +71,15 @@ const getOrCreateCart = async (userId) => {
 
 export const getCart = asyncHandler(async (req, res) => {
   const cart = await getOrCreateCart(req.user._id);
+  recalculateCart(cart);
+  await cart.save();
   await populateCart(cart);
   res.json(normalizeCartResponse(cart));
 });
 
 export const addToCart = asyncHandler(async (req, res) => {
   const { productId, quantity = 1, variantId = "" } = req.body;
-  const product = await Product.findById(productId);
+  const product = await ensureCatalogProduct(productId);
 
   if (!product) {
     return res.status(404).json({ message: "Ürün bulunamadı." });
@@ -89,20 +104,29 @@ export const addToCart = asyncHandler(async (req, res) => {
   const resolvedVariantId = selectedVariant?.id || "";
   const resolvedVariantName = selectedVariant?.name || "";
   const resolvedUnitPrice = selectedVariant?.price ?? normalizedProduct.price;
+  const resolvedProductId = product._id.toString();
+  const resolvedUnit = normalizedProduct.unit;
   const resolvedNameSnapshot = selectedVariant
     ? `${normalizedProduct.name} - ${selectedVariant.name.replace(" Pasta", "")}`
     : normalizedProduct.name;
+  const resolvedQuantity = normalizeQuantity(quantity, resolvedUnit);
+
+  if (!isValidQuantityForUnit(Number(quantity), resolvedUnit)) {
+    return res.status(400).json({ message: "Bu ürün için miktar değeri geçersiz." });
+  }
 
   const cart = await getOrCreateCart(req.user._id);
   const existingItem = cart.items.find(
-    (item) => item.product.toString() === productId && (item.variantId || "") === resolvedVariantId
+    (item) => item.product.toString() === resolvedProductId && (item.variantId || "") === resolvedVariantId
   );
 
   if (existingItem) {
-    existingItem.quantity += Number(quantity);
+    existingItem.quantity = normalizeQuantity(existingItem.quantity + resolvedQuantity, resolvedUnit);
     existingItem.unitPrice = resolvedUnitPrice;
     existingItem.variantName = resolvedVariantName;
     existingItem.nameSnapshot = resolvedNameSnapshot;
+    existingItem.unitSnapshot = resolvedUnit;
+    existingItem.lineTotal = calculateLineTotal(resolvedUnitPrice, existingItem.quantity);
   } else {
     cart.items.push({
       product: product._id,
@@ -110,8 +134,10 @@ export const addToCart = asyncHandler(async (req, res) => {
       imageUrlSnapshot: normalizedProduct.image || normalizedProduct.imageUrl,
       variantId: resolvedVariantId,
       variantName: resolvedVariantName,
-      quantity: Number(quantity),
-      unitPrice: resolvedUnitPrice
+      unitSnapshot: resolvedUnit,
+      quantity: resolvedQuantity,
+      unitPrice: resolvedUnitPrice,
+      lineTotal: calculateLineTotal(resolvedUnitPrice, resolvedQuantity)
     });
   }
 
@@ -133,7 +159,16 @@ export const updateCartItem = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: "Sepet ürünü bulunamadı." });
   }
 
-  item.quantity = Number(req.body.quantity);
+  const product = item.unitSnapshot ? null : await ensureCatalogProduct(item.product.toString());
+  const resolvedUnit = item.unitSnapshot || product?.unit || "";
+
+  if (!isValidQuantityForUnit(Number(req.body.quantity), resolvedUnit)) {
+    return res.status(400).json({ message: "Bu ürün için miktar değeri geçersiz." });
+  }
+
+  item.unitSnapshot = resolvedUnit;
+  item.quantity = normalizeQuantity(req.body.quantity, resolvedUnit);
+  item.lineTotal = calculateLineTotal(item.unitPrice, item.quantity);
   recalculateCart(cart);
   await cart.save();
   await populateCart(cart);
