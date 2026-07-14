@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import api from "../../api/client";
+import { publicApi } from "../../api/client";
 import CategoryCard from "../../components/CategoryCard";
 import ProductCard from "../../components/ProductCard";
 import { useAuth } from "../../context/AuthContext";
@@ -9,8 +9,10 @@ import { useCart } from "../../context/CartContext";
 import {
   fallbackCategories,
   fallbackContactInfo,
-  fallbackProducts
+  fallbackProducts,
+  mergeSiteContent
 } from "../../utils/fallbackContent";
+import { resolveCatalogSnapshot } from "../../utils/catalogFilters";
 
 const fallbackHomeData = {
   hero: {
@@ -27,17 +29,24 @@ const HomePage = () => {
   const { addToCart } = useCart();
   const navigate = useNavigate();
   const [data, setData] = useState(fallbackHomeData);
+  const resolvedContactInfo = mergeSiteContent(data.contactInfo);
+  const paymentDetails = resolvedContactInfo.paymentDetails;
 
   useEffect(() => {
-    api
+    publicApi
       .get("/public/home")
       .then(({ data: response }) => {
+        const resolvedCatalog = resolveCatalogSnapshot({
+          apiCategories: response.categories,
+          apiProducts: response.featuredProducts,
+          fallbackCategories,
+          fallbackProducts: fallbackProducts.filter((product) => product.featured)
+        });
+
         setData({
           hero: response.hero || fallbackHomeData.hero,
-          categories: response.categories?.length ? response.categories : fallbackHomeData.categories,
-          featuredProducts: response.featuredProducts?.length
-            ? response.featuredProducts
-            : fallbackHomeData.featuredProducts,
+          categories: resolvedCatalog.categories,
+          featuredProducts: resolvedCatalog.products,
           contactInfo: response.contactInfo || fallbackHomeData.contactInfo
         });
       })
@@ -56,7 +65,12 @@ const HomePage = () => {
       return;
     }
 
-    await addToCart(product._id);
+    try {
+      await addToCart(product._id);
+      navigate("/cart");
+    } catch (error) {
+      // Redirect only after the cart API confirms success.
+    }
   };
 
   return (
@@ -70,6 +84,27 @@ const HomePage = () => {
             <Link to="/products" className="primary-button">
               Ürünleri İncele
             </Link>
+          </div>
+
+          <div className="hero-payment-card">
+            <div className="section-heading">
+              <span className="eyebrow">Ödeme Bilgileri</span>
+              <h2>Havale & EFT ile ödeme</h2>
+            </div>
+            <div className="hero-payment-grid">
+              <div className="hero-payment-item">
+                <span>IBAN Ad Soyad</span>
+                <strong>{paymentDetails.accountHolder}</strong>
+              </div>
+              <div className="hero-payment-item">
+                <span>Banka Adı</span>
+                <strong>{paymentDetails.bankName}</strong>
+              </div>
+              <div className="hero-payment-item hero-payment-item--iban">
+                <span>IBAN</span>
+                <strong>{paymentDetails.iban}</strong>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -109,6 +144,7 @@ const HomePage = () => {
               product={product}
               onAddToCart={handleAddToCart}
               disableCart={user?.role === "admin"}
+              readOnly={user?.role === "admin"}
             />
           ))}
         </div>

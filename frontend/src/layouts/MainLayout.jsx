@@ -1,20 +1,28 @@
 import { Outlet, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
-import api from "../api/client";
+import { publicApi } from "../api/client";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
-import { fallbackContactInfo } from "../utils/fallbackContent";
+import { fallbackContactInfo, mergeSiteContent } from "../utils/fallbackContent";
 
 const MainLayout = () => {
   const location = useLocation();
-  const [contactInfo, setContactInfo] = useState(null);
+  const [contactInfo, setContactInfo] = useState(fallbackContactInfo);
 
   useEffect(() => {
-    api
+    publicApi
       .get("/public/contact")
-      .then(({ data }) => setContactInfo(data))
+      .then(({ data }) => setContactInfo(mergeSiteContent(data)))
       .catch(() => setContactInfo(fallbackContactInfo));
   }, []);
+
+  useEffect(() => {
+    if (location.hash) {
+      return;
+    }
+
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [location.pathname, location.search, location.hash]);
 
   useEffect(() => {
     if (!location.hash) {
@@ -39,7 +47,7 @@ const MainLayout = () => {
       <div className="background-orb background-orb--two" />
       <Navbar />
       <main className="page-shell">
-        <Outlet />
+        <Outlet context={{ contactInfo, setContactInfo }} />
       </main>
       <Footer contactInfo={contactInfo} />
     </div>

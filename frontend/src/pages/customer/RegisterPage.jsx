@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { getApiErrorMessage } from "../../utils/apiErrors";
 
 const initialForm = {
   firstName: "",
@@ -47,7 +48,7 @@ const RegisterPage = () => {
       });
       navigate(nextPath || "/");
     } catch (requestError) {
-      setError(requestError.response?.data?.message || "Kayıt işlemi tamamlanamadı.");
+      setError(getApiErrorMessage(requestError, "Kayıt işlemi tamamlanamadı."));
     }
   };
 
@@ -101,7 +102,10 @@ const RegisterPage = () => {
           Hesap Oluştur
         </button>
         <p>
-          Zaten hesabınız var mı? <Link to={loginLink}>Giriş yapın</Link>
+          Zaten hesabınız var mı?{" "}
+          <Link to={loginLink} className="auth-link-subtle">
+            Giriş yapın
+          </Link>
         </p>
       </form>
     </section>

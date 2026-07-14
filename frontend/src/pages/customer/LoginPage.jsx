@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { resolveNextPath } from "../../utils/authNavigation";
+import { getApiErrorMessage } from "../../utils/apiErrors";
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -9,6 +11,7 @@ const LoginPage = () => {
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const nextPath = searchParams.get("next");
+  const resolvedNextPath = resolveNextPath(nextPath);
   const intent = searchParams.get("intent");
   const registerLink = `/register${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
 
@@ -23,9 +26,9 @@ const LoginPage = () => {
         return;
       }
 
-      navigate(nextPath || "/");
+      navigate(resolvedNextPath);
     } catch (requestError) {
-      setError(requestError.response?.data?.message || "Giriş yapılamadı.");
+      setError(getApiErrorMessage(requestError, "Giriş yapılamadı."));
     }
   };
 
@@ -61,7 +64,10 @@ const LoginPage = () => {
           Giriş Yap
         </button>
         <p>
-          Hesabınız yok mu? <Link to={registerLink}>Kayıt olun</Link>
+          Hesabınız yok mu?{" "}
+          <Link to={registerLink} className="auth-link-subtle">
+            Kayıt olun
+          </Link>
         </p>
       </form>
     </section>

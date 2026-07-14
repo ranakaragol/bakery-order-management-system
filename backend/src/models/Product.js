@@ -109,6 +109,10 @@ const productSchema = new mongoose.Schema(
       default: 0,
       min: 0
     },
+    isActive: {
+      type: Boolean,
+      default: true
+    },
     featured: {
       type: Boolean,
       default: false

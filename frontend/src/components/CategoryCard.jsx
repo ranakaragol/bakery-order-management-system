@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
+import { buildCategoryQueryValue } from "../utils/catalogFilters";
 
 const CategoryCard = ({ category, active, onClick }) => {
+  const categoryQueryValue = buildCategoryQueryValue(category);
   const content = (
     <>
       <img src={category.imageUrl} alt={category.name} />
@@ -24,7 +26,10 @@ const CategoryCard = ({ category, active, onClick }) => {
   }
 
   return (
-    <Link className="category-card" to={`/products?category=${encodeURIComponent(category.name)}`}>
+    <Link
+      className="category-card"
+      to={categoryQueryValue ? `/products?category=${encodeURIComponent(categoryQueryValue)}` : "/products"}
+    >
       {content}
     </Link>
   );

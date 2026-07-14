@@ -1,5 +1,18 @@
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
+import { billingAddressFields, createEmptyBillingAddress } from "../../../shared/profile.js";
+
+const billingAddressShape = billingAddressFields.reduce(
+  (shape, field) => ({
+    ...shape,
+    [field]: {
+      type: String,
+      trim: true,
+      default: ""
+    }
+  }),
+  {}
+);
 
 const userSchema = new mongoose.Schema(
   {
@@ -44,6 +57,10 @@ const userSchema = new mongoose.Schema(
     invoiceInfo: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "InvoiceInfo"
+    },
+    billingAddress: {
+      type: new mongoose.Schema(billingAddressShape, { _id: false }),
+      default: createEmptyBillingAddress
     }
   },
   {

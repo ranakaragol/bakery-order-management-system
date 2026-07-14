@@ -32,6 +32,45 @@ const contactInfoSchema = new mongoose.Schema(
       required: true,
       trim: true
     },
+    aboutContent: {
+      titleTr: {
+        type: String,
+        required: true,
+        trim: true
+      },
+      bodyTr: {
+        type: String,
+        required: true,
+        trim: true
+      },
+      titleEn: {
+        type: String,
+        required: true,
+        trim: true
+      },
+      bodyEn: {
+        type: String,
+        required: true,
+        trim: true
+      }
+    },
+    paymentDetails: {
+      accountHolder: {
+        type: String,
+        required: true,
+        trim: true
+      },
+      iban: {
+        type: String,
+        required: true,
+        trim: true
+      },
+      bankName: {
+        type: String,
+        required: true,
+        trim: true
+      }
+    },
     mapUrl: {
       type: String,
       trim: true,

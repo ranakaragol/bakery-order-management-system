@@ -1,4 +1,5 @@
 const GENERIC_ADDRESS_PATTERN = /iletisime gecin|iletişime geçin|teyidi/i;
+export const PASALI_INSTAGRAM_URL = "https://www.instagram.com/toptanpastacin?utm_source=qr";
 
 export const buildPhoneHref = (value = "") => {
   const digits = value.replace(/\D/g, "");
@@ -31,11 +32,21 @@ export const buildInstagramHref = (value = "") => {
     return "";
   }
 
+  if (value === PASALI_INSTAGRAM_URL) {
+    return PASALI_INSTAGRAM_URL;
+  }
+
   const normalized = value
     .replace(/^https?:\/\/(www\.)?instagram\.com\//i, "")
     .replace(/^instagram\.com\//i, "")
     .replace(/^@/, "")
-    .replace(/\/+$/, "");
+    .replace(/\/+$/, "")
+    .split("?")[0]
+    .trim();
+
+  if (normalized.toLocaleLowerCase("tr-TR") === "toptanpastacin") {
+    return PASALI_INSTAGRAM_URL;
+  }
 
   return normalized ? `https://www.instagram.com/${normalized}` : "";
 };

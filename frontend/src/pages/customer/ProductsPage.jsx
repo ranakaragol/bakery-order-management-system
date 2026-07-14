@@ -1,141 +1,155 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import api from "../../api/client";
+import { publicApi } from "../../api/client";
 import CategoryCard from "../../components/CategoryCard";
 import ProductCard from "../../components/ProductCard";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 import { fallbackCategories, fallbackProducts } from "../../utils/fallbackContent";
+import {
+  areCategoriesEquivalent,
+  buildCategoryQueryValue,
+  filterCatalogProducts,
+  findMatchingCategory,
+  resolveCatalogSnapshot,
+  safelyDecodeUriComponent
+} from "../../utils/catalogFilters";
+
+const fallbackCatalog = {
+  categories: fallbackCategories,
+  products: fallbackProducts
+};
 
 const ProductsPage = () => {
   const { user } = useAuth();
   const { addToCart } = useCart();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [categories, setCategories] = useState(fallbackCategories);
-  const [products, setProducts] = useState(fallbackProducts);
-  const [usingFallback, setUsingFallback] = useState(false);
-  const initialFilters = useMemo(() => {
-    const categoryQuery = searchParams.get("category") || "";
-    const matchedCategory = fallbackCategories.find(
-      (category) =>
-        category.slug.toLocaleLowerCase("tr-TR") === categoryQuery.toLocaleLowerCase("tr-TR") ||
-        category.name.toLocaleLowerCase("tr-TR") === categoryQuery.toLocaleLowerCase("tr-TR")
-    );
+  const [catalog, setCatalog] = useState(fallbackCatalog);
+  const [status, setStatus] = useState(() => (fallbackProducts.length ? "loading" : "empty"));
+  const [searchInput, setSearchInput] = useState(() => safelyDecodeUriComponent(searchParams.get("search") || ""));
+  const productResultsRef = useRef(null);
+  const lastScrolledCategoryRef = useRef("");
 
-    return {
-      category: matchedCategory?.slug || "",
-      search: searchParams.get("search") || ""
-    };
-  }, [searchParams]);
-  const [filters, setFilters] = useState(initialFilters);
+  const categoryQuery = searchParams.get("category") || "";
+  const searchQuery = safelyDecodeUriComponent(searchParams.get("search") || "");
 
-  const matchesSearchFilter = (product, searchTerm) => {
-    if (!searchTerm) {
-      return true;
-    }
+  const activeCategory = useMemo(
+    () => findMatchingCategory(catalog.categories, categoryQuery),
+    [catalog.categories, categoryQuery]
+  );
 
-    const haystack = `${product.name} ${product.description}`.toLocaleLowerCase("tr-TR");
-    return haystack.includes(searchTerm.toLocaleLowerCase("tr-TR"));
-  };
+  const visibleProducts = useMemo(
+    () =>
+      filterCatalogProducts(catalog.products, {
+        category: activeCategory,
+        search: searchQuery
+      }),
+    [activeCategory, catalog.products, searchQuery]
+  );
 
-  const loadProducts = async (nextFilters = filters) => {
-    if (usingFallback) {
-      const filteredProducts = fallbackProducts.filter((product) => {
-        const matchesCategory = !nextFilters.category || product.category?.slug === nextFilters.category;
-        const matchesSearch = matchesSearchFilter(product, nextFilters.search);
+  useEffect(() => {
+    setSearchInput(searchQuery);
+  }, [searchQuery]);
 
-        return matchesCategory && matchesSearch;
-      });
-
-      setProducts(filteredProducts);
+  useEffect(() => {
+    if (!activeCategory || status === "loading") {
+      if (!categoryQuery) {
+        lastScrolledCategoryRef.current = "";
+      }
       return;
     }
 
-    try {
-      const query = new URLSearchParams();
+    const scrollKey = buildCategoryQueryValue(activeCategory);
 
-      if (nextFilters.category) {
-        query.set("category", nextFilters.category);
-      }
-
-      if (nextFilters.search) {
-        query.set("search", nextFilters.search);
-      }
-
-      const { data } = await api.get(`/products?${query.toString()}`);
-      setProducts(data);
-      setUsingFallback(false);
-    } catch (error) {
-      const filteredProducts = fallbackProducts.filter((product) => {
-        const matchesCategory = !nextFilters.category || product.category?.slug === nextFilters.category;
-        const matchesSearch = matchesSearchFilter(product, nextFilters.search);
-
-        return matchesCategory && matchesSearch;
-      });
-
-      setProducts(filteredProducts);
-      setUsingFallback(true);
+    if (!scrollKey || lastScrolledCategoryRef.current === scrollKey) {
+      return;
     }
-  };
+
+    const frameId = window.requestAnimationFrame(() => {
+      productResultsRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+      lastScrolledCategoryRef.current = scrollKey;
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [activeCategory, categoryQuery, status]);
 
   useEffect(() => {
-    setFilters(initialFilters);
-    Promise.all([api.get("/categories"), loadProducts(initialFilters)])
-      .then(([categoriesResponse]) => {
-        setCategories(categoriesResponse.data);
-        setUsingFallback(false);
-      })
-      .catch(() => {
-        setCategories(fallbackCategories);
-        loadProducts(initialFilters);
-        setUsingFallback(true);
-      });
-  }, [initialFilters]);
+    let cancelled = false;
+
+    const syncCatalog = async () => {
+      try {
+        const [categoriesResponse, productsResponse] = await Promise.all([
+          publicApi.get("/categories"),
+          publicApi.get("/products")
+        ]);
+
+        if (!cancelled) {
+          const nextCatalog = resolveCatalogSnapshot({
+            apiCategories: categoriesResponse.data,
+            apiProducts: productsResponse.data,
+            fallbackCategories,
+            fallbackProducts
+          });
+
+          setCatalog(nextCatalog);
+          setStatus(nextCatalog.products.length ? "success" : "empty");
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setCatalog(fallbackCatalog);
+          setStatus(fallbackProducts.length ? "success" : "error");
+        }
+      }
+    };
+
+    syncCatalog();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSearch = (event) => {
     event.preventDefault();
     const nextParams = new URLSearchParams(searchParams);
+    const normalizedSearch = searchInput.trim();
 
-    if (filters.category) {
-      const selectedCategory = categories.find((category) => category.slug === filters.category);
-      nextParams.set("category", selectedCategory?.name || filters.category);
+    if (activeCategory) {
+      nextParams.set("category", buildCategoryQueryValue(activeCategory));
     } else {
       nextParams.delete("category");
     }
 
-    if (filters.search) {
-      nextParams.set("search", filters.search);
+    if (normalizedSearch) {
+      nextParams.set("search", normalizedSearch);
     } else {
       nextParams.delete("search");
     }
 
     setSearchParams(nextParams);
-    loadProducts(filters);
   };
 
   const handleCategoryClick = (category) => {
-    const nextFilters = {
-      ...filters,
-      category: filters.category === category.slug ? "" : category.slug
-    };
-    setFilters(nextFilters);
     const nextParams = new URLSearchParams(searchParams);
+    const isActiveCategory = areCategoriesEquivalent(activeCategory, category);
 
-    if (nextFilters.category) {
-      nextParams.set("category", category.name);
-    } else {
+    if (isActiveCategory) {
       nextParams.delete("category");
+    } else {
+      nextParams.set("category", buildCategoryQueryValue(category));
     }
 
-    if (nextFilters.search) {
-      nextParams.set("search", nextFilters.search);
+    if (searchInput.trim()) {
+      nextParams.set("search", searchInput.trim());
     } else {
       nextParams.delete("search");
     }
 
     setSearchParams(nextParams);
-    loadProducts(nextFilters);
   };
 
   const handleAddToCart = async (product) => {
@@ -148,7 +162,12 @@ const ProductsPage = () => {
       return;
     }
 
-    await addToCart(product._id);
+    try {
+      await addToCart(product._id);
+      navigate("/cart");
+    } catch (error) {
+      // Redirect only after the cart API confirms success.
+    }
   };
 
   return (
@@ -163,8 +182,8 @@ const ProductsPage = () => {
         <input
           type="search"
           placeholder="Ürün ara"
-          value={filters.search}
-          onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))}
+          value={searchInput}
+          onChange={(event) => setSearchInput(event.target.value)}
         />
         <button type="submit" className="primary-button">
           Ara
@@ -178,11 +197,11 @@ const ProductsPage = () => {
           <span className="section-heading__rule" aria-hidden="true" />
         </div>
         <div className="category-grid">
-          {categories.map((category) => (
+          {catalog.categories.map((category) => (
             <CategoryCard
               key={category._id}
               category={category}
-              active={filters.category === category.slug}
+              active={areCategoriesEquivalent(activeCategory, category)}
               onClick={handleCategoryClick}
             />
           ))}
@@ -191,21 +210,32 @@ const ProductsPage = () => {
 
       <div className="section-divider" aria-hidden="true" />
 
-      {products.length ? (
-        <div className="product-grid">
-          {products.map((product) => (
-            <ProductCard
-              key={product._id}
-              product={product}
-              onAddToCart={handleAddToCart}
-              disableCart={user?.role === "admin"}
-            />
-          ))}
-        </div>
+      {status === "loading" && <div className="panel">Ürünler yükleniyor...</div>}
+
+      {visibleProducts.length ? (
+        <section ref={productResultsRef} className="content-section">
+          <div className="section-heading">
+            <span className="eyebrow">{activeCategory ? "Kategori" : "Liste"}</span>
+            <h2>{activeCategory ? `${activeCategory.name} ürünleri` : "Tüm ürünler"}</h2>
+          </div>
+          <div className="product-grid">
+            {visibleProducts.map((product) => (
+              <ProductCard
+                key={product._id}
+                product={product}
+                onAddToCart={handleAddToCart}
+                disableCart={user?.role === "admin"}
+                readOnly={user?.role === "admin"}
+              />
+            ))}
+          </div>
+        </section>
+      ) : status === "error" || !catalog.products.length ? (
+        <div className="panel">Ürünler şu anda görüntülenemiyor.</div>
+      ) : activeCategory ? (
+        <div className="panel">Bu kategoride henüz ürün bulunmuyor.</div>
       ) : (
-        <div className="panel">
-          Aradığınız kriterlere uygun ürün bulunamadı.
-        </div>
+        <div className="panel">Aradığınız kriterlere uygun ürün bulunamadı.</div>
       )}
     </div>
   );

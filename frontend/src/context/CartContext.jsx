@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import api from "../api/client";
 import { useAuth } from "./AuthContext";
+import { sanitizeQuantity } from "../../../shared/commerce.js";
 
 const CartContext = createContext(null);
 
@@ -21,6 +22,9 @@ export const CartProvider = ({ children }) => {
       const { data } = await api.get("/cart");
       setCart(data);
       return data;
+    } catch (error) {
+      setCart(null);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -31,13 +35,21 @@ export const CartProvider = ({ children }) => {
   }, [isAuthenticated, user?.role]);
 
   const addToCart = async (productId, quantity = 1, variantId = "") => {
-    const { data } = await api.post("/cart/items", { productId, quantity, variantId });
+    const sanitizedQuantity = sanitizeQuantity(quantity);
+    const { data } = await api.post("/cart/items", {
+      productId,
+      quantity: Number.isFinite(sanitizedQuantity) ? sanitizedQuantity : quantity,
+      variantId
+    });
     setCart(data.cart);
     return data.cart;
   };
 
   const updateCartItem = async (itemId, quantity) => {
-    const { data } = await api.put(`/cart/items/${itemId}`, { quantity });
+    const sanitizedQuantity = sanitizeQuantity(quantity);
+    const { data } = await api.put(`/cart/items/${itemId}`, {
+      quantity: Number.isFinite(sanitizedQuantity) ? sanitizedQuantity : quantity
+    });
     setCart(data.cart);
     return data.cart;
   };

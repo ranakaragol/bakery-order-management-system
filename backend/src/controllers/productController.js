@@ -3,6 +3,7 @@ import Category from "../models/Category.js";
 import Product from "../models/Product.js";
 import { normalizeCatalogProduct } from "../../../shared/catalogProductRules.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { ensureCatalogDataSynchronized } from "../utils/catalogSync.js";
 import { normalizeProductResponse } from "../utils/normalizeProductResponse.js";
 import { slugify } from "../utils/slugify.js";
 
@@ -67,7 +68,8 @@ const normalizeProductPayload = (payload = {}, categoryName = "") => {
       stockQuantity:
         payload.stockQuantity !== undefined && payload.stockQuantity !== null && payload.stockQuantity !== ""
           ? Number(payload.stockQuantity)
-          : 0
+          : 0,
+      isActive: payload.isActive !== false
     },
     { categoryName }
   );
@@ -81,12 +83,17 @@ const normalizeProductPayload = (payload = {}, categoryName = "") => {
 };
 
 export const getProducts = asyncHandler(async (req, res) => {
-  const { category, search, featured } = req.query;
+  await ensureCatalogDataSynchronized();
+  const { category, search, featured, includeInactive } = req.query;
   const query = {
     name: {
       $nin: legacyCakeSizeNames
     }
   };
+
+  if (includeInactive !== "true") {
+    query.isActive = { $ne: false };
+  }
 
   if (featured === "true") {
     query.featured = true;
@@ -123,6 +130,7 @@ export const getProducts = asyncHandler(async (req, res) => {
 });
 
 export const getProductById = asyncHandler(async (req, res) => {
+  await ensureCatalogDataSynchronized();
   const product = await Product.findById(req.params.id).populate("category", "name slug");
 
   if (!product || legacyCakeSizeNames.includes(product.name)) {
