@@ -16,12 +16,14 @@ import {
   normalizeQuantity,
   sanitizeQuantity
 } from "../../../../shared/commerce.js";
+import { getRegionalOrderNotice } from "../../utils/orderMinimums";
 
 const CartPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { cart, updateCartItem, removeCartItem, subtotal } = useCart();
-  const totalAmount = calculateOrderTotal(subtotal, DELIVERY_FEE);
+  const minimumOrderNotice = getRegionalOrderNotice(user?.deliveryAddress, subtotal, DELIVERY_FEE);
+  const totalAmount = calculateOrderTotal(subtotal, minimumOrderNotice.deliveryFee);
 
   const handleQuantityChange = async (item, direction) => {
     const resolvedUnit = item.unitSnapshot || item.product?.unit;
@@ -100,12 +102,18 @@ const CartPage = () => {
             </div>
             <div className="summary-row">
               <span>Teslimat</span>
-              <strong>{formatDeliveryFee(DELIVERY_FEE)}</strong>
+              <strong>{formatDeliveryFee(minimumOrderNotice.deliveryFee)}</strong>
             </div>
             <div className="summary-row">
               <span>Genel Toplam</span>
               <strong>{formatCurrency(totalAmount)}</strong>
             </div>
+            {minimumOrderNotice.isBlocked && (
+              <div className="stack-sm">
+                <p className="error-text">{minimumOrderNotice.warningMessage}</p>
+                <p>{minimumOrderNotice.shortfallMessage}</p>
+              </div>
+            )}
             <button type="button" className="primary-button" onClick={() => navigate("/checkout")}>
               Ödemeye Geç
             </button>

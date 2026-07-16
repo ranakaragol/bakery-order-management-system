@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import DeliveryAddressFields from "../../components/DeliveryAddressFields";
 import { useAuth } from "../../context/AuthContext";
 import { getApiErrorMessage } from "../../utils/apiErrors";
+import { createEmptyDeliveryAddress } from "../../../../shared/profile.js";
 
 const initialForm = {
   firstName: "",
@@ -10,7 +12,7 @@ const initialForm = {
   password: "",
   confirmPassword: "",
   phone: "",
-  address: ""
+  deliveryAddress: createEmptyDeliveryAddress()
 };
 
 const RegisterPage = () => {
@@ -44,7 +46,7 @@ const RegisterPage = () => {
         email: form.email,
         password: form.password,
         phone: form.phone,
-        address: form.address
+        deliveryAddress: form.deliveryAddress
       });
       navigate(nextPath || "/");
     } catch (requestError) {
@@ -90,12 +92,10 @@ const RegisterPage = () => {
             onChange={handleChange}
           />
         </div>
-        <textarea
-          name="address"
-          placeholder="Teslimat adresi"
+        <DeliveryAddressFields
+          value={form.deliveryAddress}
+          onChange={(deliveryAddress) => setForm((current) => ({ ...current, deliveryAddress }))}
           required
-          value={form.address}
-          onChange={handleChange}
         />
         {error && <p className="error-text">{error}</p>}
         <button type="submit" className="primary-button" disabled={loading}>

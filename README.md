@@ -204,6 +204,12 @@ npm run dev:backend
 npm run dev:frontend
 ```
 
+Tek komutla güvenli geliştirme başlangıcı için:
+
+```bash
+npm run dev
+```
+
 ### 3. MongoDB bağlantısını aç
 
 Varsayılan bağlantı:
@@ -247,6 +253,19 @@ Mongo arayüzü isterseniz:
 - MongoDB: `mongodb://127.0.0.1:27017`
 - Mongo Express: `http://localhost:8081`
 
+MongoDB'nin gerçekten ayakta olduğunu doğrulamak için:
+
+```bash
+npm run dev:status
+```
+
+veya:
+
+```bash
+lsof -nP -iTCP:27017 -sTCP:LISTEN
+docker compose ps
+```
+
 ### 4. Örnek veri ve admin hesabı yükle
 
 ```bash
@@ -268,11 +287,33 @@ Varsayılan admin:
 
 ## Çalıştırma
 
+### Onerilen gelistirme baslangici
+
+Gunluk gelistirmede onerilen komut repo kokunden calistirilan asagidaki script'tir:
+
+```bash
+npm run dev
+```
+
+Bu script:
+
+- backend'i `npm run dev` ile dosya izleyen `nodemon` akisinda baslatir
+- frontend'i `127.0.0.1:5173` uzerinde baslatir
+- `5001` veya `5173` portu doluysa sessizce mevcut surece baglanmaz, anlasilir hata verip durur
+
+Gunluk gelistirmede `npm run start:backend` kullanmayin. Bu komut dosya izleme yapmaz; yalnizca production benzeri veya tek seferlik backend calistirma ihtiyaclari icin uygundur.
+
 ### Backend
 
 ```bash
 cd backend
 npm run dev
+```
+
+veya repo kokunden:
+
+```bash
+npm run dev:backend
 ```
 
 ### Frontend
@@ -282,7 +323,72 @@ cd frontend
 npm run dev
 ```
 
+veya repo kokunden:
+
+```bash
+npm run dev:frontend
+```
+
 Frontend varsayılan olarak `http://localhost:5173`, backend ise `http://127.0.0.1:5001` üzerinden çalışır.
+
+### Servis durumu ve surum kontrolu
+
+Calisan servisleri ve backend health bilgisini gormek icin:
+
+```bash
+npm run dev:status
+```
+
+Bu script su noktalari kontrol eder:
+
+- MongoDB `127.0.0.1:27017`
+- Backend `127.0.0.1:5001`
+- Frontend `127.0.0.1:5173`
+- Backend health response'u
+
+Backend'in guncel gelistirme sureciyle calistigini dogrulamak icin:
+
+```bash
+curl http://127.0.0.1:5001/api/health
+```
+
+Health response'unda su alanlar bulunur:
+
+- `status`
+- `service`
+- `version`
+- `startedAt`
+- `runtime.lifecycle`
+
+Dogru gelistirme akisinda backend `npm run dev` ile basladiysa `runtime.lifecycle` alani `dev` olmali. `start` veya `direct-node` goruyorsaniz backend gunluk gelistirme icin yanlis sekilde baslatilmis olabilir.
+
+### Durdurma ve yeniden baslatma
+
+Repo kokunden `npm run dev` ile baslattiysaniz:
+
+```bash
+Ctrl + C
+```
+
+Acik portlari ve ilgili surecleri incelemek icin:
+
+```bash
+lsof -nP -iTCP:5001 -sTCP:LISTEN
+lsof -nP -iTCP:5173 -sTCP:LISTEN
+lsof -nP -iTCP:27017 -sTCP:LISTEN
+```
+
+Ilgili PID'yi gordukten sonra sureci durdurun:
+
+```bash
+kill <PID>
+```
+
+Guvenli yeniden baslatma akisi:
+
+1. `npm run dev:status` ile port ve servis durumunu kontrol edin.
+2. Gerekirse sadece ilgili sureci manuel olarak durdurun.
+3. Repo kokunde `npm run dev` komutunu yeniden calistirin.
 
 ## Docker ile Tam Yerel Kurulum
 

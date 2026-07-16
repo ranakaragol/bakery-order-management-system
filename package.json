@@ -5,8 +5,10 @@
   "type": "module",
   "description": "Modern bakery ordering platform with React frontend and Express backend.",
   "scripts": {
+    "dev": "node scripts/dev.mjs",
     "dev:backend": "npm --prefix backend run dev",
     "dev:frontend": "npm --prefix frontend run dev",
+    "dev:status": "node scripts/dev-status.mjs",
     "start:backend": "npm --prefix backend run start",
     "lint": "node scripts/lint-catalog.mjs",
     "build:frontend": "npm --prefix frontend run build",

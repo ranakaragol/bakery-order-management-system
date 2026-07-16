@@ -1,27 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
+import DeliveryAddressFields from "../../components/DeliveryAddressFields";
 import { useAuth } from "../../context/AuthContext";
 import { getApiErrorMessage } from "../../utils/apiErrors";
+import { buildProfileForm } from "../../utils/deliveryAddressForms";
 import {
-  createEmptyBillingAddress,
-  hasCompleteBillingAddress,
-  mapInvoiceInfoToBillingAddress,
-  mergeBillingAddressSources,
-  normalizeBillingAddress
+  hasCompleteDeliveryAddress,
+  hasCompleteBillingAddress
 } from "../../../../shared/profile.js";
-
-const buildProfileForm = (user = null) => ({
-  firstName: user?.firstName || "",
-  lastName: user?.lastName || "",
-  email: user?.email || "",
-  phone: user?.phone || "",
-  address: user?.address || "",
-  billingAddress: normalizeBillingAddress(
-    mergeBillingAddressSources(
-      user?.billingAddress || createEmptyBillingAddress(),
-      mapInvoiceInfoToBillingAddress(user?.invoiceInfo)
-    )
-  )
-});
 
 const emptyPasswordForm = {
   currentPassword: "",
@@ -30,9 +15,10 @@ const emptyPasswordForm = {
 };
 
 const ProfilePage = () => {
-  const { user, refreshProfile, updateProfile, changePassword } = useAuth();
+  const { authReady, user, refreshProfile, updateProfile, changePassword } = useAuth();
   const [form, setForm] = useState(() => buildProfileForm(user));
   const [savedForm, setSavedForm] = useState(() => buildProfileForm(user));
+  const [profileReady, setProfileReady] = useState(() => Boolean(user));
   const [editing, setEditing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
@@ -41,26 +27,56 @@ const ProfilePage = () => {
   const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
-    const syncProfile = async () => {
-      const refreshedUser = await refreshProfile();
-      const nextForm = buildProfileForm(refreshedUser || user);
+    if (!authReady) {
+      return undefined;
+    }
 
+    if (user) {
+      const nextForm = buildProfileForm(user);
       setForm(nextForm);
       setSavedForm(nextForm);
+      setProfileReady(true);
+    }
+
+    let cancelled = false;
+
+    const syncProfile = async () => {
+      const refreshedUser = await refreshProfile();
+      const nextForm = buildProfileForm(refreshedUser || user || null);
+
+      if (cancelled) {
+        return;
+      }
+      setForm(nextForm);
+      setSavedForm(nextForm);
+      setProfileReady(true);
     };
 
     syncProfile();
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authReady]);
 
   useEffect(() => {
+    if (!user || editing || changingPassword) {
+      return;
+    }
+
     const nextForm = buildProfileForm(user);
     setForm(nextForm);
     setSavedForm(nextForm);
-  }, [user]);
+    setProfileReady(true);
+  }, [changingPassword, editing, user]);
 
   const billingAddressComplete = useMemo(
     () => hasCompleteBillingAddress(form.billingAddress),
     [form.billingAddress]
+  );
+  const deliveryAddressComplete = useMemo(
+    () => hasCompleteDeliveryAddress(form.deliveryAddress),
+    [form.deliveryAddress]
   );
 
   const handleAccountChange = (field, value) => {
@@ -100,12 +116,12 @@ const ProfilePage = () => {
     }
 
     try {
-      await updateProfile({
+      const { user: updatedUser } = await updateProfile({
         firstName: form.firstName,
         lastName: form.lastName,
         email: form.email,
         phone: form.phone,
-        address: form.address,
+        deliveryAddress: form.deliveryAddress,
         billingAddress: form.billingAddress
       });
 
@@ -116,8 +132,8 @@ const ProfilePage = () => {
         });
       }
 
-      const refreshedUser = await refreshProfile();
-      const nextForm = buildProfileForm(refreshedUser || user);
+      const refreshedUser = (await refreshProfile()) || updatedUser || user;
+      const nextForm = buildProfileForm(refreshedUser || null);
 
       setForm(nextForm);
       setSavedForm(nextForm);
@@ -129,6 +145,10 @@ const ProfilePage = () => {
       setError(getApiErrorMessage(requestError, "Profil kaydedilemedi."));
     }
   };
+
+  if (!profileReady) {
+    return <section className="panel">Profil bilgileriniz yukleniyor...</section>;
+  }
 
   return (
     <section className="stack-lg">
@@ -243,10 +263,14 @@ const ProfilePage = () => {
             <span className="eyebrow">Teslimat Adresi</span>
             <h2>Teslimat Adresi</h2>
           </div>
-          <textarea
-            placeholder="Teslimat adresi"
-            value={form.address}
-            onChange={(event) => handleAccountChange("address", event.target.value)}
+          {!deliveryAddressComplete && (
+            <div className="info-banner">
+              Teslimat için il, ilçe, mahalle ve açık adres bilgilerini eksiksiz girmeniz gerekir.
+            </div>
+          )}
+          <DeliveryAddressFields
+            value={form.deliveryAddress}
+            onChange={(deliveryAddress) => handleAccountChange("deliveryAddress", deliveryAddress)}
             disabled={!editing}
             required
           />

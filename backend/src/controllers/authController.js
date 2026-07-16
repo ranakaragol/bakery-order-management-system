@@ -4,18 +4,46 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { generateToken } from "../utils/generateToken.js";
 import { sanitizeUser } from "../utils/sanitizeUser.js";
 import {
+  formatDeliveryAddress,
   hasCompleteBillingAddress,
+  hasCompleteDeliveryAddress,
   mapBillingAddressToInvoiceInfo,
-  normalizeBillingAddress
+  normalizeBillingAddress,
+  normalizeDeliveryAddress
 } from "../../../shared/profile.js";
 
 export const register = asyncHandler(async (req, res) => {
-  const { firstName, lastName, email, password, phone, address } = req.body;
+  const { firstName, lastName, email, password, phone } = req.body;
+  const rawDeliveryAddress = req.body.deliveryAddress || {};
+  const rawProvince = String(rawDeliveryAddress.province || "").trim();
+  const rawDistrict = String(rawDeliveryAddress.district || "").trim();
+  const rawNeighborhood = String(rawDeliveryAddress.neighborhood || rawDeliveryAddress.mahalle || "").trim();
+  const rawStreetAddress = String(
+    rawDeliveryAddress.streetAddress ||
+      rawDeliveryAddress.openAddress ||
+      rawDeliveryAddress.addressLine ||
+      rawDeliveryAddress.address ||
+      req.body.address ||
+      ""
+  ).trim();
+  const normalizedDeliveryAddress = normalizeDeliveryAddress(req.body.deliveryAddress, req.body.address);
 
   const existingUser = await User.findOne({ email });
 
   if (existingUser) {
     return res.status(409).json({ message: "Bu e-posta adresiyle kayıtlı bir kullanıcı zaten var." });
+  }
+
+  if (!rawStreetAddress || !rawProvince || !rawDistrict || !rawNeighborhood) {
+    return res.status(400).json({
+      message: "Teslimat adresi için il, ilçe, mahalle ve açık adres bilgileri zorunludur."
+    });
+  }
+
+  if (!hasCompleteDeliveryAddress(normalizedDeliveryAddress)) {
+    return res.status(400).json({
+      message: "Teslimat ili ve ilçesi geçersiz veya birbiriyle uyumsuz."
+    });
   }
 
   const user = await User.create({
@@ -24,7 +52,8 @@ export const register = asyncHandler(async (req, res) => {
     email,
     password,
     phone,
-    address,
+    address: formatDeliveryAddress(normalizedDeliveryAddress),
+    deliveryAddress: normalizedDeliveryAddress,
     role: "customer"
   });
 
@@ -60,7 +89,8 @@ export const getCurrentUser = asyncHandler(async (req, res) => {
 });
 
 export const updateProfile = asyncHandler(async (req, res) => {
-  const fields = ["firstName", "lastName", "email", "phone", "address"];
+  const fields = ["firstName", "lastName", "email", "phone"];
+  const isCustomer = req.user.role === "customer";
 
   if (req.body.email && req.body.email !== req.user.email) {
     const existingUser = await User.findOne({ email: req.body.email });
@@ -75,6 +105,41 @@ export const updateProfile = asyncHandler(async (req, res) => {
       req.user[field] = req.body[field];
     }
   });
+
+  if (!isCustomer && req.body.address !== undefined) {
+    req.user.address = req.body.address;
+  }
+
+  if (req.body.deliveryAddress !== undefined || (isCustomer && req.body.address !== undefined)) {
+    const rawDeliveryAddress = req.body.deliveryAddress || {};
+    const rawProvince = String(rawDeliveryAddress.province || "").trim();
+    const rawDistrict = String(rawDeliveryAddress.district || "").trim();
+    const rawNeighborhood = String(rawDeliveryAddress.neighborhood || rawDeliveryAddress.mahalle || "").trim();
+    const rawStreetAddress = String(
+      rawDeliveryAddress.streetAddress ||
+        rawDeliveryAddress.openAddress ||
+        rawDeliveryAddress.addressLine ||
+        rawDeliveryAddress.address ||
+        req.body.address ||
+        ""
+    ).trim();
+    const normalizedDeliveryAddress = normalizeDeliveryAddress(req.body.deliveryAddress, req.body.address);
+
+    if (!rawStreetAddress || !rawProvince || !rawDistrict || !rawNeighborhood) {
+      return res.status(400).json({
+        message: "Teslimat adresi için il, ilçe, mahalle ve açık adres bilgileri zorunludur."
+      });
+    }
+
+    if (!hasCompleteDeliveryAddress(normalizedDeliveryAddress)) {
+      return res.status(400).json({
+        message: "Teslimat ili ve ilçesi geçersiz veya birbiriyle uyumsuz."
+      });
+    }
+
+    req.user.deliveryAddress = normalizedDeliveryAddress;
+    req.user.address = formatDeliveryAddress(normalizedDeliveryAddress);
+  }
 
   if (req.body.billingAddress) {
     const normalizedBillingAddress = normalizeBillingAddress(req.body.billingAddress);

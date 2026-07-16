@@ -1,5 +1,6 @@
 import { body } from "express-validator";
 import { sanitizeQuantity } from "../../../shared/commerce.js";
+import { isValidProvinceDistrictPair, normalizeProvinceValue } from "../../../shared/deliveryZones.js";
 
 export const addToCartValidator = [
   body("productId").trim().notEmpty().withMessage("Ürün kimliği zorunludur."),
@@ -19,7 +20,23 @@ export const updateCartItemValidator = [
 ];
 
 export const createOrderValidator = [
-  body("address").trim().notEmpty().withMessage("Teslimat adresi zorunludur."),
+  body("deliveryAddress.province").trim().notEmpty().withMessage("Teslimat ili zorunludur."),
+  body("deliveryAddress.district").trim().notEmpty().withMessage("Teslimat ilçesi zorunludur."),
+  body("deliveryAddress.neighborhood").trim().notEmpty().withMessage("Teslimat mahallesi zorunludur."),
+  body("deliveryAddress.streetAddress").trim().notEmpty().withMessage("Teslimat açık adresi zorunludur."),
+  body("deliveryAddress.addressTitle").optional({ values: "falsy" }).trim(),
+  body("deliveryAddress.postalCode").optional({ values: "falsy" }).trim(),
+  body("deliveryAddress")
+    .custom((value = {}) => {
+      const province = normalizeProvinceValue(value?.province);
+
+      if (!province || !value?.district) {
+        return true;
+      }
+
+      return isValidProvinceDistrictPair(province, value.district);
+    })
+    .withMessage("Teslimat ili ve ilçesi geçersiz veya birbiriyle uyumsuz."),
   body("notes").optional().isString().withMessage("Sipariş notu metin olmalıdır."),
   body("paymentMethod")
     .trim()

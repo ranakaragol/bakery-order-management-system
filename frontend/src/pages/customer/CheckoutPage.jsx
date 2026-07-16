@@ -1,10 +1,16 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import api from "../../api/client";
+import DeliveryAddressFields from "../../components/DeliveryAddressFields";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 import { getApiErrorMessage } from "../../utils/apiErrors";
+import {
+  buildCheckoutForm,
+  createEmptyCheckoutForm
+} from "../../utils/deliveryAddressForms";
 import { mergeSiteContent } from "../../utils/fallbackContent";
+import { getRegionalOrderNotice } from "../../utils/orderMinimums";
 import {
   formatCurrency,
   formatDeliveryFee,
@@ -14,9 +20,9 @@ import {
 } from "../../utils/formatters";
 import { DELIVERY_FEE, calculateOrderTotal } from "../../../../shared/commerce.js";
 import {
+  hasCompleteDeliveryAddress,
   hasCompleteBillingAddress,
-  mapInvoiceInfoToBillingAddress,
-  mergeBillingAddressSources
+  resolveUserDeliveryAddress
 } from "../../../../shared/profile.js";
 
 const CheckoutPage = () => {
@@ -37,58 +43,79 @@ const CheckoutPage = () => {
   ];
 
   const navigate = useNavigate();
-  const { user, refreshProfile } = useAuth();
+  const { authReady, user, refreshProfile } = useAuth();
   const { cart, subtotal, refreshCart } = useCart();
   const siteContent = mergeSiteContent(outletContext?.contactInfo);
   const paymentDetails = siteContent.paymentDetails;
-  const [form, setForm] = useState({
-    address: "",
-      notes: "",
-      paymentMethod: "",
-      invoiceInfo: {
-        fullName: "",
-        companyName: "",
-      taxNumber: "",
-      taxOffice: "",
-      identityNumber: "",
-      billingAddress: "",
-      phone: "",
-      email: ""
-    }
-  });
+  const [form, setForm] = useState(() => createEmptyCheckoutForm());
+  const [checkoutReady, setCheckoutReady] = useState(() => Boolean(user));
   const [error, setError] = useState("");
   const [requiresProfileCompletion, setRequiresProfileCompletion] = useState(false);
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const [deliveryAddressTouched, setDeliveryAddressTouched] = useState(false);
+  const orderNotice = getRegionalOrderNotice(
+    form.deliveryAddress || resolveUserDeliveryAddress(user),
+    subtotal,
+    DELIVERY_FEE
+  );
 
   useEffect(() => {
-    if (user) {
-      const billingAddress = mergeBillingAddressSources(
-        user.billingAddress,
-        mapInvoiceInfoToBillingAddress(user.invoiceInfo)
-      );
-
-      setForm({
-        address: user.address || "",
-        notes: "",
-        paymentMethod: "",
-        invoiceInfo: {
-          fullName: billingAddress.fullName || `${user.firstName} ${user.lastName}`,
-          companyName: billingAddress.companyName || "",
-          taxNumber: billingAddress.taxNumber || "",
-          taxOffice: billingAddress.taxOffice || "",
-          identityNumber: user.invoiceInfo?.identityNumber || "",
-          billingAddress: billingAddress.billingAddress || user.address || "",
-          phone: billingAddress.phone || user.phone || "",
-          email: billingAddress.email || user.email || ""
-        }
-      });
+    if (!user) {
+      return;
     }
-  }, [user]);
+
+    setForm((current) =>
+      buildCheckoutForm(user, current, {
+        preserveDeliveryAddress: deliveryAddressTouched
+      })
+    );
+    setCheckoutReady(true);
+  }, [deliveryAddressTouched, user]);
+
+  useEffect(() => {
+    if (!authReady) {
+      return undefined;
+    }
+
+    let isCancelled = false;
+
+    const syncProfileForCheckout = async () => {
+      const refreshedUser = await refreshProfile();
+
+      if (isCancelled) {
+        return;
+      }
+
+      const nextUser = refreshedUser || user || null;
+
+      if (nextUser) {
+        setForm((current) =>
+          buildCheckoutForm(nextUser, current, {
+            preserveDeliveryAddress: deliveryAddressTouched
+          })
+        );
+      }
+
+      setCheckoutReady(true);
+    };
+
+    syncProfileForCheckout();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [authReady, user?.id]);
 
   const validateCheckoutBeforePayment = async () => {
     setError("");
     setRequiresProfileCompletion(false);
+
+    if (orderNotice.isBlocked) {
+      setError(`${orderNotice.warningMessage} ${orderNotice.shortfallMessage}`.trim());
+      setShowPaymentOptions(false);
+      return false;
+    }
 
     const refreshedUser = (await refreshProfile()) || user;
 
@@ -114,6 +141,12 @@ const CheckoutPage = () => {
   };
 
   const handleConfirmPaymentMethod = async () => {
+    if (orderNotice.isBlocked) {
+      setError(`${orderNotice.warningMessage} ${orderNotice.shortfallMessage}`.trim());
+      setShowPaymentOptions(false);
+      return;
+    }
+
     if (!form.paymentMethod) {
       setError("Lütfen bir ödeme yöntemi seçiniz.");
       return;
@@ -142,7 +175,11 @@ const CheckoutPage = () => {
     return <section className="panel">Ödeme için sepetinizde ürün bulunmalı.</section>;
   }
 
-  const totalAmount = calculateOrderTotal(subtotal, DELIVERY_FEE);
+  if (!checkoutReady) {
+    return <section className="panel">Kayitli teslimat adresiniz yukleniyor...</section>;
+  }
+
+  const totalAmount = calculateOrderTotal(subtotal, orderNotice.deliveryFee);
 
   return (
     <section className="checkout-layout">
@@ -154,12 +191,16 @@ const CheckoutPage = () => {
         <div className="info-banner">
           Fatura bilgileri ilk sipariş aşamasında alınır ve sonraki siparişleriniz için hesabınızda saklanır.
         </div>
-        <textarea
-          placeholder="Teslimat adresi"
-          value={form.address}
-          onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))}
+
+        <DeliveryAddressFields
+          value={form.deliveryAddress}
+          onChange={(deliveryAddress) => {
+            setDeliveryAddressTouched(true);
+            setForm((current) => ({ ...current, deliveryAddress }));
+          }}
           required
         />
+
         <textarea
           placeholder="Sipariş notu"
           value={form.notes}
@@ -255,7 +296,16 @@ const CheckoutPage = () => {
             )}
           </div>
         )}
-        <button type="submit" className="primary-button">
+        {orderNotice.isBlocked && (
+          <div className="stack-sm">
+            <p className="error-text">{orderNotice.warningMessage}</p>
+            <p>{orderNotice.shortfallMessage}</p>
+          </div>
+        )}
+        {!hasCompleteDeliveryAddress(form.deliveryAddress) && (
+          <p className="error-text">Teslimat adresi için il, ilçe, mahalle ve açık adres bilgileri gereklidir.</p>
+        )}
+        <button type="submit" className="primary-button" disabled={orderNotice.isBlocked}>
           Ödemeyi Tamamla ve Sipariş Ver
         </button>
 
@@ -323,7 +373,7 @@ const CheckoutPage = () => {
                   type="button"
                   className="primary-button"
                   onClick={handleConfirmPaymentMethod}
-                  disabled={isSubmittingOrder}
+                  disabled={isSubmittingOrder || orderNotice.isBlocked}
                 >
                   {isSubmittingOrder ? "Sipariş oluşturuluyor..." : "Siparişi Tamamla"}
                 </button>
@@ -357,12 +407,18 @@ const CheckoutPage = () => {
         </div>
         <div className="summary-row">
           <span>Teslimat</span>
-          <strong>{formatDeliveryFee(DELIVERY_FEE)}</strong>
+          <strong>{formatDeliveryFee(orderNotice.deliveryFee)}</strong>
         </div>
         <div className="summary-row">
           <span>Genel Toplam</span>
           <strong>{formatCurrency(totalAmount)}</strong>
         </div>
+        {orderNotice.isBlocked && (
+          <div className="stack-sm">
+            <p className="error-text">{orderNotice.warningMessage}</p>
+            <p>{orderNotice.shortfallMessage}</p>
+          </div>
+        )}
       </aside>
     </section>
   );
