@@ -262,11 +262,12 @@ Bu komut:
 
 - veritabanını sıfırlamaz,
 - yalnız admin hesabını oluşturur veya günceller,
-- admin hesabı için gerekli `InvoiceInfo` kaydını da seed environment alanlarıyla eşler.
+- admin hesabı için gerekli `InvoiceInfo` kaydını da seed environment alanlarıyla eşler,
+- `seed` komutuyla aynı admin ve fatura environment sözleşmesini kullanır.
 
 > Güvenlik notu: `.env.example` dosyalarındaki admin ve fatura bilgileri yalnızca geliştirme amaçlı sahte örneklerdir. Production veya gerçek ortamda `seed:admin` çalıştırılmadan önce bu değerleri güçlü ve ortama uygun gerçek değerlerle değiştirin. Gerçek değerleri yalnızca takip edilmeyen `backend/.env` dosyasında veya deployment secret yönetiminde saklayın.
 
-> Not: `npm --prefix backend run seed` veritabanını temizleyip katalog ve admin verilerini yeniden yazar. Lokal denemelerde dikkatli kullanın.
+> Not: `npm --prefix backend run seed` destructive bir işlemdir; products, categories, contact info, invoice info ve users koleksiyonlarını silip katalog ile admin verilerini yeniden yazar. Lokal denemelerde dikkatli kullanın. Admin environment doğrulaması silme işleminden önce yapılır; zorunlu tax alanları eksikse veriler silinmez.
 
 ### 6. Backend’i çalıştırın
 
@@ -322,14 +323,14 @@ Desteklenen environment değişkenleri aşağıdaki gibidir. Tablodaki örnekler
 | `CSRF_PROTECTION_ENABLED` | Opsiyonel | CSRF middleware’i zorla etkinleştirir | `true` |
 | `CSRF_COOKIE_NAME` | Opsiyonel | CSRF cookie adı | `pasali_csrf` |
 | `AUTH_COOKIE_ALLOW_INSECURE_LOCALHOST_NONE` | Opsiyonel | Sadece açık localhost testleri için `sameSite=none` istisnası | `true` |
-| `ADMIN_SEED_EMAIL` | Opsiyonel | Seed/upsert admin e-postası | `admin@example.com` |
-| `ADMIN_SEED_PASSWORD` | Opsiyonel | Seed/upsert admin parolası | `ChangeMe123!` |
-| `ADMIN_SEED_FIRST_NAME` | Opsiyonel | Seed/upsert admin adı | `Example` |
-| `ADMIN_SEED_LAST_NAME` | Opsiyonel | Seed/upsert admin soyadı | `Admin` |
-| `ADMIN_SEED_PHONE` | Opsiyonel | Seed/upsert admin telefonu | `+90 555 000 00 00` |
-| `ADMIN_SEED_ADDRESS` | Opsiyonel | Seed/upsert admin adresi | `Example Address` |
-| `ADMIN_SEED_TAX_NUMBER` | Gerekli (`seed:admin` için) | Admin `InvoiceInfo` vergi numarası placeholder’ı | `0000000000` |
-| `ADMIN_SEED_TAX_OFFICE` | Gerekli (`seed:admin` için) | Admin `InvoiceInfo` vergi dairesi placeholder’ı | `Example Tax Office` |
+| `ADMIN_SEED_EMAIL` | Opsiyonel | `seed` ve `seed:admin` için ortak admin e-postası | `admin@example.com` |
+| `ADMIN_SEED_PASSWORD` | Opsiyonel | Yeni admin oluştururken kullanılan, mevcut adminde ise açıkça set edilmişse uygulanan seed parolası | `ChangeMe123!` |
+| `ADMIN_SEED_FIRST_NAME` | Opsiyonel | `seed` ve `seed:admin` için ortak admin adı | `Example` |
+| `ADMIN_SEED_LAST_NAME` | Opsiyonel | `seed` ve `seed:admin` için ortak admin soyadı | `Admin` |
+| `ADMIN_SEED_PHONE` | Opsiyonel | `seed` ve `seed:admin` için ortak admin telefonu | `+90 555 000 00 00` |
+| `ADMIN_SEED_ADDRESS` | Opsiyonel | `seed` ve `seed:admin` için ortak admin adresi | `Example Address` |
+| `ADMIN_SEED_TAX_NUMBER` | Gerekli (`seed` ve `seed:admin` için) | Admin `InvoiceInfo` vergi numarası placeholder’ı | `0000000000` |
+| `ADMIN_SEED_TAX_OFFICE` | Gerekli (`seed` ve `seed:admin` için) | Admin `InvoiceInfo` vergi dairesi placeholder’ı | `Example Tax Office` |
 | `VITE_API_URL` | Opsiyonel | Frontend API base URL. Boş bırakılırsa mevcut hostname + `:5001/api` kullanılır. | `http://127.0.0.1:5001/api` |
 | `VITE_CSRF_COOKIE_NAME` | Opsiyonel | Frontend’in okuyacağı CSRF cookie adı | `pasali_csrf` |
 

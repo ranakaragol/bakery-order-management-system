@@ -12,8 +12,10 @@ const requiredSeedFieldLabels = {
   taxNumber: "ADMIN_SEED_TAX_NUMBER",
   taxOffice: "ADMIN_SEED_TAX_OFFICE"
 };
+const userSeedFields = ["firstName", "lastName", "phone", "address", "role"];
 
 const normalizeSeedValue = (value = "", fallback = "") => String(value || fallback).trim();
+const hasOwn = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
 
 export const buildAdminProfile = (env = process.env) => ({
   firstName: normalizeSeedValue(env.ADMIN_SEED_FIRST_NAME, "Example"),
@@ -38,7 +40,17 @@ export const validateAdminProfile = (adminProfile) => {
   }
 };
 
-const buildInvoicePayload = (adminProfile, userId) => ({
+export const resolveAdminProfile = (env = process.env) => {
+  const adminProfile = buildAdminProfile(env);
+  validateAdminProfile(adminProfile);
+
+  return adminProfile;
+};
+
+export const shouldApplyAdminPassword = (env = process.env) =>
+  hasOwn(env, "ADMIN_SEED_PASSWORD") && normalizeSeedValue(env.ADMIN_SEED_PASSWORD).length > 0;
+
+export const buildInvoicePayload = (adminProfile, userId) => ({
   user: userId,
   fullName: `${adminProfile.firstName} ${adminProfile.lastName}`.trim(),
   billingAddress: adminProfile.address,
@@ -49,53 +61,155 @@ const buildInvoicePayload = (adminProfile, userId) => ({
   taxOffice: adminProfile.taxOffice
 });
 
+const buildUserPayload = (adminProfile, { includePassword = true } = {}) => {
+  const payload = {
+    firstName: adminProfile.firstName,
+    lastName: adminProfile.lastName,
+    email: adminProfile.email,
+    phone: adminProfile.phone,
+    address: adminProfile.address,
+    role: "admin"
+  };
+
+  if (includePassword) {
+    payload.password = adminProfile.password;
+  }
+
+  return payload;
+};
+
+const assignSeedUserFields = (user, adminProfile, { includePassword = false } = {}) => {
+  Object.assign(user, buildUserPayload(adminProfile, { includePassword }));
+};
+
+const snapshotUserState = (user, { includePassword = false } = {}) => {
+  const snapshot = userSeedFields.reduce(
+    (state, field) => ({
+      ...state,
+      [field]: user[field]
+    }),
+    {}
+  );
+
+  if (includePassword && typeof user.password !== "undefined") {
+    snapshot.password = user.password;
+  }
+
+  return snapshot;
+};
+
+const restoreUserState = async ({ userModel, user, snapshot }) => {
+  if (!snapshot) {
+    return;
+  }
+
+  if (typeof userModel.updateOne === "function") {
+    await userModel.updateOne({ _id: user._id }, snapshot);
+  } else if (typeof user.updateOne === "function") {
+    await user.updateOne(snapshot);
+  } else {
+    throw new Error("Admin rollback could not be persisted.");
+  }
+
+  Object.assign(user, snapshot);
+};
+
+const createInvoiceDraft = (invoiceInfoModel, invoicePayload) => {
+  if (typeof invoiceInfoModel === "function") {
+    return new invoiceInfoModel(invoicePayload);
+  }
+
+  return null;
+};
+
+const validateInvoiceDraft = async (draft) => {
+  if (!draft) {
+    return;
+  }
+
+  if (typeof draft.validate === "function") {
+    await draft.validate();
+    return;
+  }
+
+  if (typeof draft.validateSync === "function") {
+    const validationError = draft.validateSync();
+
+    if (validationError) {
+      throw validationError;
+    }
+  }
+};
+
+const logRollbackFailure = (logger) => {
+  if (typeof logger?.error === "function") {
+    logger.error("Admin rollback failed after invoice persistence error.");
+  }
+};
+
+const removeInvoiceRecord = async (invoiceInfo) => {
+  if (typeof invoiceInfo?.deleteOne === "function") {
+    await invoiceInfo.deleteOne();
+  }
+};
+
 export const upsertAdmin = async ({
   env = process.env,
   connect = connectDB,
   userModel = User,
   invoiceInfoModel = InvoiceInfo,
-  logger = console
+  logger = console,
+  adminProfile = null
 } = {}) => {
-  const adminProfile = buildAdminProfile(env);
-  validateAdminProfile(adminProfile);
+  const resolvedAdminProfile = adminProfile || buildAdminProfile(env);
+  validateAdminProfile(resolvedAdminProfile);
+  const shouldUpdatePassword = shouldApplyAdminPassword(env);
 
   await connect();
 
   let createdNewUser = false;
-  let user = await userModel.findOne({ email: adminProfile.email }).populate("invoiceInfo");
+  let userQuery = userModel.findOne({ email: resolvedAdminProfile.email });
+
+  if (shouldUpdatePassword && typeof userQuery?.select === "function") {
+    userQuery = userQuery.select("+password");
+  }
+
+  if (typeof userQuery?.populate === "function") {
+    userQuery = userQuery.populate("invoiceInfo");
+  }
+
+  let user = await userQuery;
 
   if (!user) {
     createdNewUser = true;
-    user = await userModel.create({
-      firstName: adminProfile.firstName,
-      lastName: adminProfile.lastName,
-      email: adminProfile.email,
-      password: adminProfile.password,
-      phone: adminProfile.phone,
-      address: adminProfile.address,
-      role: "admin"
-    });
-  } else {
-    user.firstName = adminProfile.firstName;
-    user.lastName = adminProfile.lastName;
-    user.phone = adminProfile.phone;
-    user.address = adminProfile.address;
-    user.role = "admin";
-    user.password = adminProfile.password;
-    await user.save();
+    user = await userModel.create(buildUserPayload(resolvedAdminProfile));
   }
 
   let invoiceInfo = user.invoiceInfo
     ? await invoiceInfoModel.findById(user.invoiceInfo._id || user.invoiceInfo)
     : null;
-  const invoicePayload = buildInvoicePayload(adminProfile, user._id);
+  const invoicePayload = buildInvoicePayload(resolvedAdminProfile, user._id);
   const createdNewInvoiceInfo = !invoiceInfo;
+  const userSnapshot = createdNewUser
+    ? null
+    : snapshotUserState(user, { includePassword: shouldUpdatePassword && typeof user.password !== "undefined" });
+
+  if (invoiceInfo) {
+    Object.assign(invoiceInfo, invoicePayload);
+    await validateInvoiceDraft(invoiceInfo);
+  } else {
+    await validateInvoiceDraft(createInvoiceDraft(invoiceInfoModel, invoicePayload));
+  }
+
+  if (!createdNewUser) {
+    assignSeedUserFields(user, resolvedAdminProfile, { includePassword: shouldUpdatePassword });
+    await user.save();
+  }
 
   try {
     if (!invoiceInfo) {
       invoiceInfo = await invoiceInfoModel.create(invoicePayload);
     } else {
-      Object.assign(invoiceInfo, invoicePayload);
       await invoiceInfo.save();
     }
   } catch (error) {
@@ -105,17 +219,49 @@ export const upsertAdmin = async ({
       } catch {
         // Keep the original invoice creation error; cleanup is best-effort only.
       }
+    } else if (!createdNewUser) {
+      try {
+        await restoreUserState({ userModel, user, snapshot: userSnapshot });
+      } catch {
+        logRollbackFailure(logger);
+      }
     }
 
     throw error;
   }
 
   if (String(user.invoiceInfo?._id || user.invoiceInfo || "") !== String(invoiceInfo._id || "")) {
-    user.invoiceInfo = invoiceInfo._id;
-    await user.save();
+    try {
+      user.invoiceInfo = invoiceInfo._id;
+      await user.save();
+    } catch (error) {
+      if (createdNewInvoiceInfo) {
+        try {
+          await removeInvoiceRecord(invoiceInfo);
+        } catch {
+          // Keep the original user save error; cleanup is best-effort only.
+        }
+      }
+
+      if (createdNewUser && typeof user.deleteOne === "function") {
+        try {
+          await user.deleteOne();
+        } catch {
+          // Keep the original user save error; cleanup is best-effort only.
+        }
+      } else if (!createdNewUser) {
+        try {
+          await restoreUserState({ userModel, user, snapshot: userSnapshot });
+        } catch {
+          logRollbackFailure(logger);
+        }
+      }
+
+      throw error;
+    }
   }
 
-  logger.log(`Admin user is ready: ${adminProfile.email}`);
+  logger.log(`Admin user is ready: ${resolvedAdminProfile.email}`);
 
   return {
     user,
