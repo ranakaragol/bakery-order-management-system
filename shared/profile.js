@@ -17,6 +17,16 @@ export const billingAddressFields = [
   "billingAddress"
 ];
 
+export const billingAddressFieldLabels = {
+  fullName: "Fatura ad soyad",
+  companyName: "Şirket adı",
+  taxOffice: "Vergi dairesi",
+  taxNumber: "Vergi numarası",
+  email: "Fatura e-postası",
+  phone: "Fatura telefonu",
+  billingAddress: "Fatura adresi"
+};
+
 export const deliveryAddressFields = [
   "addressTitle",
   "province",
@@ -89,6 +99,27 @@ export const normalizeBillingAddress = (billingAddress = {}) =>
     }),
     createEmptyBillingAddress()
   );
+
+export const getMissingBillingAddressFields = (billingAddress = {}) => {
+  const normalizedAddress = normalizeBillingAddress(billingAddress);
+
+  return billingAddressFields
+    .filter((field) => !normalizedAddress[field])
+    .map((field) => ({
+      field,
+      label: billingAddressFieldLabels[field] || field
+    }));
+};
+
+export const buildMissingBillingAddressMessage = (billingAddress = {}) => {
+  const missingFields = getMissingBillingAddressFields(billingAddress);
+
+  if (!missingFields.length) {
+    return "";
+  }
+
+  return `Fatura bilgileri eksik: ${missingFields.map((field) => field.label).join(", ")}.`;
+};
 
 export const normalizeDeliveryAddress = (deliveryAddress = {}, fallbackLegacyAddress = "") => {
   const source =
@@ -208,9 +239,7 @@ export const mergeBillingAddressSources = (...sources) => {
 };
 
 export const hasCompleteBillingAddress = (billingAddress = {}) => {
-  const normalizedAddress = normalizeBillingAddress(billingAddress);
-
-  return billingAddressFields.every((field) => normalizedAddress[field]);
+  return getMissingBillingAddressFields(billingAddress).length === 0;
 };
 
 export const resolveUserDeliveryAddress = (user = {}) =>
@@ -219,6 +248,9 @@ export const resolveUserDeliveryAddress = (user = {}) =>
 export const buildUserAddressSummary = (user = {}) =>
   formatDeliveryAddress(resolveUserDeliveryAddress(user)) || normalizeProfileText(user?.address);
 
-export const PROFILE_PHONE_PATTERN = /^[+]?[\d\s()\-]{10,20}$/;
+export const PROFILE_PHONE_INPUT_PATTERN = "[+]?[0-9\\s()\\-]{10,20}";
+export const PROFILE_PHONE_PATTERN = new RegExp(`^${PROFILE_PHONE_INPUT_PATTERN}$`);
+export const PASSWORD_MIN_LENGTH = 8;
 
 export const isValidProfilePhone = (value = "") => PROFILE_PHONE_PATTERN.test(normalizeProfileText(value));
+export const isValidPasswordLength = (value = "") => normalizeProfileText(value).length >= PASSWORD_MIN_LENGTH;

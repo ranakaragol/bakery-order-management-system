@@ -1,6 +1,8 @@
 import {
   createEmptyBillingAddress,
   createEmptyDeliveryAddress,
+  getMissingBillingAddressFields,
+  hasCompleteDeliveryAddress,
   mapInvoiceInfoToBillingAddress,
   mergeBillingAddressSources,
   normalizeBillingAddress,
@@ -21,6 +23,15 @@ export const buildProfileForm = (user = null) => ({
     )
   )
 });
+
+export const resolveCheckoutBillingAddress = (user = null, invoiceInfo = {}) =>
+  normalizeBillingAddress(
+    mergeBillingAddressSources(
+      user?.billingAddress || createEmptyBillingAddress(),
+      mapInvoiceInfoToBillingAddress(user?.invoiceInfo),
+      mapInvoiceInfoToBillingAddress(invoiceInfo)
+    )
+  );
 
 export const createEmptyCheckoutForm = () => ({
   deliveryAddress: createEmptyDeliveryAddress(),
@@ -64,5 +75,19 @@ export const buildCheckoutForm = (
       phone: billingAddress.phone || user?.phone || "",
       email: billingAddress.email || user?.email || ""
     }
+  };
+};
+
+export const getCheckoutValidationState = (form = createEmptyCheckoutForm(), user = null) => {
+  const deliveryAddress = normalizeDeliveryAddress(form?.deliveryAddress);
+  const billingAddress = resolveCheckoutBillingAddress(user, form?.invoiceInfo);
+  const missingBillingFields = getMissingBillingAddressFields(billingAddress);
+
+  return {
+    deliveryAddress,
+    billingAddress,
+    missingBillingFields,
+    isDeliveryAddressComplete: hasCompleteDeliveryAddress(deliveryAddress),
+    isBillingAddressComplete: missingBillingFields.length === 0
   };
 };

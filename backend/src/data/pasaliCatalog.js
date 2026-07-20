@@ -9,7 +9,9 @@ export const categorySeeds = categoryDefinitions.map((category) => ({
   name: category.name,
   description: category.description,
   imageUrl: category.imageUrl,
-  isFeatured: category.isFeatured
+  isFeatured: category.isFeatured,
+  sortOrder: categoryDefinitions.findIndex((definition) => definition.slug === category.slug),
+  isActive: true
 }));
 
 export const productSeeds = productDefinitions.map((product) => ({

@@ -1,5 +1,8 @@
 import Cart from "../models/Cart.js";
+import Category from "../models/Category.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { isProductCategoryVisible } from "../utils/catalogProductVisibility.js";
+import { sendError } from "../utils/apiResponses.js";
 import { ensureCatalogProduct } from "../utils/catalogResolver.js";
 import { normalizeProductResponse } from "../utils/normalizeProductResponse.js";
 import {
@@ -82,23 +85,33 @@ export const addToCart = asyncHandler(async (req, res) => {
   const product = await ensureCatalogProduct(productId);
 
   if (!product) {
-    return res.status(404).json({ message: "Ürün bulunamadı." });
+    return sendError(res, 404, { message: "Ürün bulunamadı." });
   }
 
   if (product.stockStatus === "out_of_stock") {
-    return res.status(400).json({ message: "Bu ürün şu anda stokta yok." });
+    return sendError(res, 400, { message: "Bu ürün şu anda stokta yok." });
+  }
+
+  if (product.isActive === false) {
+    return sendError(res, 400, { message: "Bu ürün şu anda satışa kapalı." });
   }
 
   const normalizedProduct = normalizeProductResponse(product);
+  const category = product.category ? await Category.findById(product.category).select("isActive") : null;
+
+  if (!isProductCategoryVisible(category)) {
+    return sendError(res, 400, { message: "Bu ürünün kategorisi şu anda satışa kapalı." });
+  }
+
   const hasVariants = Array.isArray(normalizedProduct.variants) && normalizedProduct.variants.length > 0;
   const selectedVariant = hasVariants ? normalizedProduct.variants.find((variant) => variant.id === variantId) : null;
 
   if (hasVariants && !selectedVariant) {
-    return res.status(400).json({ message: "Bu pasta için sepete eklemeden önce boy seçmelisiniz." });
+    return sendError(res, 400, { message: "Bu pasta için sepete eklemeden önce boy seçmelisiniz." });
   }
 
   if (!hasVariants && (normalizedProduct.price === null || normalizedProduct.price === undefined)) {
-    return res.status(400).json({ message: "Bu ürün için sipariş öncesi fiyat teyidi gereklidir." });
+    return sendError(res, 400, { message: "Bu ürün için sipariş öncesi fiyat teyidi gereklidir." });
   }
 
   const resolvedVariantId = selectedVariant?.id || "";
@@ -112,7 +125,7 @@ export const addToCart = asyncHandler(async (req, res) => {
   const resolvedQuantity = normalizeQuantity(quantity, resolvedUnit);
 
   if (!isValidQuantityForUnit(Number(quantity), resolvedUnit)) {
-    return res.status(400).json({ message: "Bu ürün için miktar değeri geçersiz." });
+    return sendError(res, 400, { message: "Bu ürün için miktar değeri geçersiz." });
   }
 
   const cart = await getOrCreateCart(req.user._id);
@@ -156,14 +169,14 @@ export const updateCartItem = asyncHandler(async (req, res) => {
   const item = cart.items.id(req.params.itemId);
 
   if (!item) {
-    return res.status(404).json({ message: "Sepet ürünü bulunamadı." });
+    return sendError(res, 404, { message: "Sepet ürünü bulunamadı." });
   }
 
   const product = item.unitSnapshot ? null : await ensureCatalogProduct(item.product.toString());
   const resolvedUnit = item.unitSnapshot || product?.unit || "";
 
   if (!isValidQuantityForUnit(Number(req.body.quantity), resolvedUnit)) {
-    return res.status(400).json({ message: "Bu ürün için miktar değeri geçersiz." });
+    return sendError(res, 400, { message: "Bu ürün için miktar değeri geçersiz." });
   }
 
   item.unitSnapshot = resolvedUnit;
@@ -184,7 +197,7 @@ export const removeCartItem = asyncHandler(async (req, res) => {
   const item = cart.items.id(req.params.itemId);
 
   if (!item) {
-    return res.status(404).json({ message: "Sepet ürünü bulunamadı." });
+    return sendError(res, 404, { message: "Sepet ürünü bulunamadı." });
   }
 
   item.deleteOne();

@@ -9,12 +9,13 @@ import {
   upsertContactInfo
 } from "../controllers/adminController.js";
 import { allowRoles, protect } from "../middleware/authMiddleware.js";
+import { csrfProtection } from "../middleware/csrfMiddleware.js";
 import { validateRequest } from "../middleware/validateRequest.js";
 import { contactValidator, statusValidator } from "../validators/commerceValidators.js";
 
 const router = express.Router();
 
-router.use(protect, allowRoles("admin"));
+router.use(protect, csrfProtection, allowRoles("admin"));
 
 router.get("/dashboard", getDashboard);
 router.get("/orders", getOrders);

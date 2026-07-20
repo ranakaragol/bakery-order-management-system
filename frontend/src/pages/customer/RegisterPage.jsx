@@ -1,8 +1,18 @@
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import DeliveryAddressFields from "../../components/DeliveryAddressFields";
+import FormMessage from "../../components/FormMessage";
 import { useAuth } from "../../context/AuthContext";
-import { getApiErrorMessage } from "../../utils/apiErrors";
+import { getApiErrorMessage, getApiFieldErrors } from "../../utils/apiErrors";
+import {
+  PASSWORD_MIN_LENGTH,
+  PHONE_INPUT_PATTERN,
+  PHONE_INPUT_TITLE,
+  getPasswordValidationMessage,
+  getPhoneValidationMessage,
+  isValidPasswordLength,
+  isValidProfilePhone
+} from "../../utils/accountValidation";
 import { createEmptyDeliveryAddress } from "../../../../shared/profile.js";
 
 const initialForm = {
@@ -16,25 +26,43 @@ const initialForm = {
 };
 
 const RegisterPage = () => {
+  const formId = useId().replace(/:/g, "");
+  const firstInvalidFieldRef = useRef(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { register, loading } = useAuth();
   const [form, setForm] = useState(initialForm);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const nextPath = searchParams.get("next");
   const intent = searchParams.get("intent");
   const loginLink = `/login${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
 
   const handleChange = (event) => {
     const { name, value } = event.target;
+    setFieldErrors((current) => ({ ...current, [name]: "" }));
     setForm((current) => ({ ...current, [name]: value }));
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
+    setFieldErrors({});
+
+    if (!isValidProfilePhone(form.phone)) {
+      setFieldErrors({ phone: getPhoneValidationMessage("Telefon numarası") });
+      setError(getPhoneValidationMessage("Telefon numarası"));
+      return;
+    }
+
+    if (!isValidPasswordLength(form.password)) {
+      setFieldErrors({ password: getPasswordValidationMessage() });
+      setError(getPasswordValidationMessage());
+      return;
+    }
 
     if (form.password !== form.confirmPassword) {
+      setFieldErrors({ confirmPassword: "Şifreler eşleşmiyor." });
       setError("Şifreler eşleşmiyor.");
       return;
     }
@@ -50,7 +78,9 @@ const RegisterPage = () => {
       });
       navigate(nextPath || "/");
     } catch (requestError) {
+      setFieldErrors(getApiFieldErrors(requestError));
       setError(getApiErrorMessage(requestError, "Kayıt işlemi tamamlanamadı."));
+      firstInvalidFieldRef.current?.focus();
     }
   };
 
@@ -71,35 +101,114 @@ const RegisterPage = () => {
           </div>
         )}
         <div className="form-grid">
-          <input name="firstName" placeholder="Ad" required value={form.firstName} onChange={handleChange} />
-          <input name="lastName" placeholder="Soyad" required value={form.lastName} onChange={handleChange} />
-          <input name="email" type="email" placeholder="E-posta" required value={form.email} onChange={handleChange} />
-          <input name="phone" placeholder="GSM Numarası" required value={form.phone} onChange={handleChange} />
-          <input
-            name="password"
-            type="password"
-            placeholder="Şifre"
-            required
-            value={form.password}
-            onChange={handleChange}
-          />
-          <input
-            name="confirmPassword"
-            type="password"
-            placeholder="Şifre Tekrarı"
-            required
-            value={form.confirmPassword}
-            onChange={handleChange}
-          />
+          <label className="stack-xs form-field" htmlFor={`${formId}-firstName`}>
+            <span>Ad *</span>
+            <input
+              ref={firstInvalidFieldRef}
+              id={`${formId}-firstName`}
+              name="firstName"
+              placeholder="Adınız"
+              required
+              value={form.firstName}
+              onChange={handleChange}
+              aria-invalid={Boolean(fieldErrors.firstName)}
+              aria-describedby={fieldErrors.firstName ? `${formId}-firstName-error` : undefined}
+            />
+            {fieldErrors.firstName && <small id={`${formId}-firstName-error`} className="field-error-text">{fieldErrors.firstName}</small>}
+          </label>
+          <label className="stack-xs form-field" htmlFor={`${formId}-lastName`}>
+            <span>Soyad *</span>
+            <input
+              id={`${formId}-lastName`}
+              name="lastName"
+              placeholder="Soyadınız"
+              required
+              value={form.lastName}
+              onChange={handleChange}
+              aria-invalid={Boolean(fieldErrors.lastName)}
+              aria-describedby={fieldErrors.lastName ? `${formId}-lastName-error` : undefined}
+            />
+            {fieldErrors.lastName && <small id={`${formId}-lastName-error`} className="field-error-text">{fieldErrors.lastName}</small>}
+          </label>
+          <label className="stack-xs form-field" htmlFor={`${formId}-email`}>
+            <span>E-posta *</span>
+            <input
+              id={`${formId}-email`}
+              name="email"
+              type="email"
+              placeholder="ornek@pasali.com"
+              required
+              value={form.email}
+              onChange={handleChange}
+              aria-invalid={Boolean(fieldErrors.email)}
+              aria-describedby={fieldErrors.email ? `${formId}-email-error` : undefined}
+            />
+            {fieldErrors.email && <small id={`${formId}-email-error`} className="field-error-text">{fieldErrors.email}</small>}
+          </label>
+          <label className="stack-xs form-field" htmlFor={`${formId}-phone`}>
+            <span>Telefon numarası *</span>
+            <input
+              id={`${formId}-phone`}
+              name="phone"
+              placeholder="05xx xxx xx xx"
+              required
+              value={form.phone}
+              onChange={handleChange}
+              pattern={PHONE_INPUT_PATTERN}
+              title={PHONE_INPUT_TITLE}
+              aria-invalid={Boolean(fieldErrors.phone)}
+              aria-describedby={fieldErrors.phone ? `${formId}-phone-error` : undefined}
+            />
+            {fieldErrors.phone && <small id={`${formId}-phone-error`} className="field-error-text">{fieldErrors.phone}</small>}
+          </label>
+          <label className="stack-xs form-field" htmlFor={`${formId}-password`}>
+            <span>Şifre *</span>
+            <input
+              id={`${formId}-password`}
+              name="password"
+              type="password"
+              placeholder="En az 8 karakter"
+              required
+              value={form.password}
+              onChange={handleChange}
+              minLength={PASSWORD_MIN_LENGTH}
+              title={getPasswordValidationMessage()}
+              aria-invalid={Boolean(fieldErrors.password)}
+              aria-describedby={fieldErrors.password ? `${formId}-password-error` : undefined}
+            />
+            {fieldErrors.password && <small id={`${formId}-password-error`} className="field-error-text">{fieldErrors.password}</small>}
+          </label>
+          <label className="stack-xs form-field" htmlFor={`${formId}-confirmPassword`}>
+            <span>Şifre tekrarı *</span>
+            <input
+              id={`${formId}-confirmPassword`}
+              name="confirmPassword"
+              type="password"
+              placeholder="Şifrenizi tekrar girin"
+              required
+              value={form.confirmPassword}
+              onChange={handleChange}
+              minLength={PASSWORD_MIN_LENGTH}
+              title={getPasswordValidationMessage()}
+              aria-invalid={Boolean(fieldErrors.confirmPassword)}
+              aria-describedby={fieldErrors.confirmPassword ? `${formId}-confirmPassword-error` : undefined}
+            />
+            {fieldErrors.confirmPassword && (
+              <small id={`${formId}-confirmPassword-error`} className="field-error-text">
+                {fieldErrors.confirmPassword}
+              </small>
+            )}
+          </label>
         </div>
         <DeliveryAddressFields
           value={form.deliveryAddress}
           onChange={(deliveryAddress) => setForm((current) => ({ ...current, deliveryAddress }))}
           required
+          idPrefix={`${formId}-delivery`}
         />
-        {error && <p className="error-text">{error}</p>}
+        <FormMessage id={`${formId}-error`} type="error" message={error} />
         <button type="submit" className="primary-button" disabled={loading}>
-          Hesap Oluştur
+          {loading ? "Hesap oluşturuluyor..." : "Hesap Oluştur"}
         </button>
         <p>
           Zaten hesabınız var mı?{" "}

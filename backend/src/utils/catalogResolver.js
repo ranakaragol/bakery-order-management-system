@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Category from "../models/Category.js";
 import Product from "../models/Product.js";
 import { categoryDefinitions, productDefinitions } from "../../../shared/pasaliCatalogData.js";
+import { resolveCategorySortOrder } from "./categoryVisibility.js";
 import { slugify } from "./slugify.js";
 
 const catalogProducts = new Map();
@@ -77,7 +78,9 @@ export const ensureCatalogProduct = async (identifier = "") => {
         slug: categorySlug,
         description: categoryDefinition?.description || "",
         imageUrl: categoryDefinition?.imageUrl || definition.image,
-        isFeatured: Boolean(categoryDefinition?.isFeatured)
+        isFeatured: Boolean(categoryDefinition?.isFeatured),
+        sortOrder: resolveCategorySortOrder(categoryDefinition),
+        isActive: true
       }
     },
     {

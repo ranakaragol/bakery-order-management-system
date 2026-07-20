@@ -2,7 +2,7 @@ import { validationResult } from "express-validator";
 import { describe, expect, it } from "vitest";
 import { protect } from "../middleware/authMiddleware.js";
 import profileRoutes from "../routes/profileRoutes.js";
-import { profilePasswordValidator, profileValidator } from "../validators/authValidators.js";
+import { profilePasswordValidator, profileValidator, registerValidator } from "../validators/authValidators.js";
 import {
   createEmptyBillingAddress,
   createEmptyDeliveryAddress,
@@ -98,6 +98,19 @@ describe("profile validators", () => {
   });
 
   it("rejects invalid phone values, incomplete delivery addresses and short passwords", async () => {
+    const registerErrors = await runValidators(registerValidator, {
+      firstName: "Rana",
+      lastName: "Karagöl",
+      email: "rana@example.com",
+      phone: "12",
+      password: "1234567",
+      deliveryAddress: {
+        province: "istanbul",
+        district: "kadikoy",
+        neighborhood: "Caferağa Mahallesi",
+        streetAddress: "Moda Caddesi"
+      }
+    });
     const profileErrors = await runValidators(profileValidator, {
       phone: "12",
       deliveryAddress: {
@@ -112,6 +125,11 @@ describe("profile validators", () => {
       newPassword: "1234567"
     });
 
+    expect(registerErrors.isEmpty()).toBe(false);
+    expect(registerErrors.array().some((error) => error.msg === "Phone number format is invalid.")).toBe(true);
+    expect(
+      registerErrors.array().some((error) => error.msg === "Password must be at least 8 characters long.")
+    ).toBe(true);
     expect(profileErrors.isEmpty()).toBe(false);
     expect(passwordErrors.isEmpty()).toBe(false);
   });

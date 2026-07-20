@@ -1,3 +1,32 @@
+export const getApiValidationMessages = (error) =>
+  Array.isArray(error?.response?.data?.errors)
+    ? error.response.data.errors.map((item) => item?.message).filter(Boolean)
+    : [];
+
+export const getApiFieldErrors = (error) => {
+  const responseData = error?.response?.data;
+  const fieldErrors = {};
+
+  if (responseData?.field && typeof responseData?.message === "string" && responseData.message.trim()) {
+    fieldErrors[responseData.field] = responseData.message;
+  }
+
+  if (Array.isArray(responseData?.errors)) {
+    responseData.errors.forEach((item) => {
+      const field = String(item?.field || "").trim();
+      const message = String(item?.message || "").trim();
+
+      if (field && message && !fieldErrors[field]) {
+        fieldErrors[field] = message;
+      }
+    });
+  }
+
+  return fieldErrors;
+};
+
+export const getFieldErrorMessage = (fieldErrors = {}, fieldName = "") => fieldErrors[fieldName] || "";
+
 export const getApiErrorMessage = (error, fallbackMessage) => {
   const responseData = error?.response?.data;
 
@@ -5,12 +34,12 @@ export const getApiErrorMessage = (error, fallbackMessage) => {
     return responseData.message;
   }
 
-  if (Array.isArray(responseData?.errors) && responseData.errors.length > 0) {
-    const firstError = responseData.errors.find((item) => item?.message);
+  const validationMessages = getApiValidationMessages(error);
 
-    if (firstError?.message) {
-      return firstError.message;
-    }
+  if (validationMessages.length > 0) {
+    const [firstError] = validationMessages;
+
+    return firstError;
   }
 
   if (!error?.response) {

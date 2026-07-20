@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildCheckoutForm, buildProfileForm, createEmptyCheckoutForm } from "./deliveryAddressForms.js";
+import {
+  buildCheckoutForm,
+  buildProfileForm,
+  createEmptyCheckoutForm,
+  getCheckoutValidationState
+} from "./deliveryAddressForms.js";
 
 const sampleUser = {
   firstName: "Osman",
@@ -77,4 +82,76 @@ test("buildCheckoutForm preserves a checkout-only address override when requeste
   assert.equal(form.deliveryAddress.streetAddress, "Deneme Sokak No:8");
   assert.equal(form.deliveryAddress.postalCode, "41050");
   assert.equal(form.notes, "Kapıyı çalınız");
+});
+
+test("checkout validation accepts first-order billing details entered on the form", () => {
+  const customerWithoutSavedBilling = {
+    ...sampleUser,
+    billingAddress: {
+      fullName: "",
+      companyName: "",
+      taxOffice: "",
+      taxNumber: "",
+      email: "",
+      phone: "",
+      billingAddress: ""
+    },
+    invoiceInfo: null
+  };
+  const checkoutForm = {
+    ...createEmptyCheckoutForm(),
+    deliveryAddress: sampleUser.deliveryAddress,
+    invoiceInfo: {
+      fullName: "Osman Karagöl",
+      companyName: "Paşalı Patiserrie",
+      taxNumber: "1234567890",
+      taxOffice: "Kadıköy",
+      billingAddress: "Kozyatağı Mahallesi, Kadıköy / İstanbul",
+      phone: "05321234567",
+      email: "osman@example.com"
+    }
+  };
+  const validationState = getCheckoutValidationState(checkoutForm, customerWithoutSavedBilling);
+
+  assert.equal(validationState.isDeliveryAddressComplete, true);
+  assert.equal(validationState.isBillingAddressComplete, true);
+  assert.deepEqual(validationState.missingBillingFields, []);
+});
+
+test("checkout validation reports which billing fields are missing", () => {
+  const customerWithoutSavedBilling = {
+    ...sampleUser,
+    billingAddress: {
+      fullName: "",
+      companyName: "",
+      taxOffice: "",
+      taxNumber: "",
+      email: "",
+      phone: "",
+      billingAddress: ""
+    },
+    invoiceInfo: null
+  };
+  const validationState = getCheckoutValidationState(
+    {
+      ...createEmptyCheckoutForm(),
+      deliveryAddress: sampleUser.deliveryAddress,
+      invoiceInfo: {
+        fullName: "Osman Karagöl",
+        companyName: "",
+        taxNumber: "",
+        taxOffice: "Kadıköy",
+        billingAddress: "",
+        phone: "05321234567",
+        email: ""
+      }
+    },
+    customerWithoutSavedBilling
+  );
+
+  assert.equal(validationState.isBillingAddressComplete, false);
+  assert.deepEqual(
+    validationState.missingBillingFields.map((field) => field.label),
+    ["Şirket adı", "Vergi numarası", "Fatura e-postası", "Fatura adresi"]
+  );
 });

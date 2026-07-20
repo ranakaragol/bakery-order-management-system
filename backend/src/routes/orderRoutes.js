@@ -4,13 +4,14 @@ import {
   getMyOrders,
   getOrderById
 } from "../controllers/orderController.js";
-import { protect } from "../middleware/authMiddleware.js";
+import { allowRoles, protect } from "../middleware/authMiddleware.js";
+import { csrfProtection } from "../middleware/csrfMiddleware.js";
 import { validateRequest } from "../middleware/validateRequest.js";
 import { createOrderValidator } from "../validators/commerceValidators.js";
 
 const router = express.Router();
 
-router.use(protect);
+router.use(protect, csrfProtection, allowRoles("customer"));
 
 router.get("/my", getMyOrders);
 router.get("/:id", getOrderById);

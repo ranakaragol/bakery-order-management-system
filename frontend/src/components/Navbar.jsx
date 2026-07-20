@@ -15,9 +15,12 @@ const Navbar = () => {
     window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate("/");
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } finally {
+      navigate("/");
+    }
   };
 
   return (

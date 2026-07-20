@@ -1,7 +1,19 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import api from "../../api/client";
+import ErrorState from "../../components/ErrorState";
+import FormMessage from "../../components/FormMessage";
+import LoadingState from "../../components/LoadingState";
 import { useAuth } from "../../context/AuthContext";
+import {
+  PASSWORD_MIN_LENGTH,
+  PHONE_INPUT_PATTERN,
+  PHONE_INPUT_TITLE,
+  getPasswordValidationMessage,
+  getPhoneValidationMessage,
+  isValidPasswordLength,
+  isValidProfilePhone
+} from "../../utils/accountValidation";
 import { getApiErrorMessage } from "../../utils/apiErrors";
 import { fallbackContactInfo, mergeSiteContent } from "../../utils/fallbackContent";
 
@@ -52,46 +64,53 @@ const emptyPasswordForm = {
 const AdminProfilePage = () => {
   const outletContext = useOutletContext();
   const { user, refreshProfile, updateProfile, changePassword } = useAuth();
+  const formId = useId();
   const [accountForm, setAccountForm] = useState(() => buildAccountForm(user));
   const [savedAccountForm, setSavedAccountForm] = useState(() => buildAccountForm(user));
   const [siteForm, setSiteForm] = useState(() => buildSiteSettingsForm());
   const [savedSiteForm, setSavedSiteForm] = useState(() => buildSiteSettingsForm());
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordForm, setPasswordForm] = useState(emptyPasswordForm);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const userRef = useRef(user);
 
   useEffect(() => {
-    const loadPageData = async () => {
-      setLoading(true);
-      setError("");
+    userRef.current = user;
+  }, [user]);
 
-      try {
-        const [refreshedUser, siteSettingsResponse] = await Promise.all([
-          refreshProfile(),
-          api.get("/admin/contact")
-        ]);
+  const loadPageData = useCallback(async () => {
+    setLoading(true);
+    setError("");
 
-        const nextAccountForm = buildAccountForm(refreshedUser || user);
-        const nextSiteForm = buildSiteSettingsForm(siteSettingsResponse.data);
+    try {
+      const [refreshedUser, siteSettingsResponse] = await Promise.all([
+        refreshProfile(),
+        api.get("/admin/contact")
+      ]);
 
-        setAccountForm(nextAccountForm);
-        setSavedAccountForm(nextAccountForm);
-        setSiteForm(nextSiteForm);
-        setSavedSiteForm(nextSiteForm);
-        outletContext?.setContactInfo?.(mergeSiteContent(siteSettingsResponse.data));
-      } catch (requestError) {
-        setError(getApiErrorMessage(requestError, "Bilgiler yüklenemedi."));
-      } finally {
-        setLoading(false);
-      }
-    };
+      const nextAccountForm = buildAccountForm(refreshedUser || userRef.current);
+      const nextSiteForm = buildSiteSettingsForm(siteSettingsResponse.data);
 
-    loadPageData();
-  }, []);
+      setAccountForm(nextAccountForm);
+      setSavedAccountForm(nextAccountForm);
+      setSiteForm(nextSiteForm);
+      setSavedSiteForm(nextSiteForm);
+      outletContext?.setContactInfo?.(mergeSiteContent(siteSettingsResponse.data));
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, "Bilgiler yüklenemedi."));
+    } finally {
+      setLoading(false);
+    }
+  }, [outletContext, refreshProfile]);
+
+  useEffect(() => {
+    void loadPageData();
+  }, [loadPageData]);
 
   useEffect(() => {
     if (!user || editing) {
@@ -143,9 +162,24 @@ const AdminProfilePage = () => {
     setError("");
     setSuccessMessage("");
 
+    if (!isValidProfilePhone(accountForm.phone)) {
+      setError(getPhoneValidationMessage("Telefon numarası"));
+      return;
+    }
+
+    if (siteForm.phone && !isValidProfilePhone(siteForm.phone)) {
+      setError(getPhoneValidationMessage("Site telefonu"));
+      return;
+    }
+
     if (changingPassword) {
       if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
         setError("Şifre değiştirmek için tüm şifre alanlarını doldurunuz.");
+        return;
+      }
+
+      if (!isValidPasswordLength(passwordForm.newPassword)) {
+        setError(getPasswordValidationMessage());
         return;
       }
 
@@ -156,6 +190,7 @@ const AdminProfilePage = () => {
     }
 
     try {
+      setIsSaving(true);
       await updateProfile(accountForm);
 
       if (changingPassword) {
@@ -182,15 +217,17 @@ const AdminProfilePage = () => {
       setSuccessMessage("Admin profili ve site bilgileri güncellendi.");
     } catch (requestError) {
       setError(getApiErrorMessage(requestError, "İşlem tamamlanamadı."));
+    } finally {
+      setIsSaving(false);
     }
   };
 
   if (loading) {
-    return (
-      <section className="stack-lg">
-        <article className="panel">Bilgiler yükleniyor...</article>
-      </section>
-    );
+    return <LoadingState message="Admin profil ve site ayarları yükleniyor..." />;
+  }
+
+  if (error && !editing && !savedSiteForm.heroTitle) {
+    return <ErrorState message={error} onRetry={loadPageData} />;
   }
 
   return (
@@ -201,8 +238,8 @@ const AdminProfilePage = () => {
         <p>Hakkımızda, iletişim ve ödeme bilgilerini tek yerden güncelleyebilirsiniz.</p>
       </div>
 
-      {successMessage && <div className="success-banner">{successMessage}</div>}
-      {error && <div className="error-text">{error}</div>}
+      <FormMessage type="success" message={successMessage} />
+      <FormMessage type="error" message={error} />
 
       <form className="stack-md" onSubmit={handleSubmit}>
         <article className="panel profile-card">
@@ -211,43 +248,60 @@ const AdminProfilePage = () => {
             <h2>Admin hesap bilgileri</h2>
           </div>
           <div className="form-grid">
-            <input
-              placeholder="Ad"
-              value={accountForm.firstName}
-              onChange={(event) => handleAccountChange("firstName", event.target.value)}
-              disabled={!editing}
-              required
-            />
-            <input
-              placeholder="Soyad"
-              value={accountForm.lastName}
-              onChange={(event) => handleAccountChange("lastName", event.target.value)}
-              disabled={!editing}
-              required
-            />
-            <input
-              type="email"
-              placeholder="E-posta"
-              value={accountForm.email}
-              onChange={(event) => handleAccountChange("email", event.target.value)}
-              disabled={!editing}
-              required
-            />
-            <input
-              placeholder="Telefon"
-              value={accountForm.phone}
-              onChange={(event) => handleAccountChange("phone", event.target.value)}
-              disabled={!editing}
-              required
-            />
+            <label className="stack-xs form-field" htmlFor={`${formId}-first-name`}>
+              <span>Ad *</span>
+              <input
+                id={`${formId}-first-name`}
+                value={accountForm.firstName}
+                onChange={(event) => handleAccountChange("firstName", event.target.value)}
+                disabled={!editing || isSaving}
+                required
+              />
+            </label>
+            <label className="stack-xs form-field" htmlFor={`${formId}-last-name`}>
+              <span>Soyad *</span>
+              <input
+                id={`${formId}-last-name`}
+                value={accountForm.lastName}
+                onChange={(event) => handleAccountChange("lastName", event.target.value)}
+                disabled={!editing || isSaving}
+                required
+              />
+            </label>
+            <label className="stack-xs form-field" htmlFor={`${formId}-email`}>
+              <span>E-posta *</span>
+              <input
+                id={`${formId}-email`}
+                type="email"
+                value={accountForm.email}
+                onChange={(event) => handleAccountChange("email", event.target.value)}
+                disabled={!editing || isSaving}
+                required
+              />
+            </label>
+            <label className="stack-xs form-field" htmlFor={`${formId}-phone`}>
+              <span>Telefon *</span>
+              <input
+                id={`${formId}-phone`}
+                value={accountForm.phone}
+                onChange={(event) => handleAccountChange("phone", event.target.value)}
+                disabled={!editing || isSaving}
+                required
+                pattern={PHONE_INPUT_PATTERN}
+                title={PHONE_INPUT_TITLE}
+              />
+            </label>
           </div>
-          <textarea
-            placeholder="Adres"
-            value={accountForm.address}
-            onChange={(event) => handleAccountChange("address", event.target.value)}
-            disabled={!editing}
-            required
-          />
+          <label className="stack-xs form-field" htmlFor={`${formId}-address`}>
+            <span>Adres *</span>
+            <textarea
+              id={`${formId}-address`}
+              value={accountForm.address}
+              onChange={(event) => handleAccountChange("address", event.target.value)}
+              disabled={!editing || isSaving}
+              required
+            />
+          </label>
 
           <div className="profile-password-block">
             <input type={showPassword ? "text" : "password"} value="********" readOnly disabled />
@@ -274,33 +328,49 @@ const AdminProfilePage = () => {
 
           {changingPassword && (
             <div className="form-grid">
-              <input
-                type={showPassword ? "text" : "password"}
-                placeholder="Eski şifre"
-                value={passwordForm.currentPassword}
-                onChange={(event) =>
-                  setPasswordForm((current) => ({ ...current, currentPassword: event.target.value }))
-                }
-                required
-              />
-              <input
-                type={showPassword ? "text" : "password"}
-                placeholder="Yeni şifre"
-                value={passwordForm.newPassword}
-                onChange={(event) =>
-                  setPasswordForm((current) => ({ ...current, newPassword: event.target.value }))
-                }
-                required
-              />
-              <input
-                type={showPassword ? "text" : "password"}
-                placeholder="Yeni şifre tekrar"
-                value={passwordForm.confirmPassword}
-                onChange={(event) =>
-                  setPasswordForm((current) => ({ ...current, confirmPassword: event.target.value }))
-                }
-                required
-              />
+              <label className="stack-xs form-field" htmlFor={`${formId}-current-password`}>
+                <span>Mevcut şifre *</span>
+                <input
+                  id={`${formId}-current-password`}
+                  type={showPassword ? "text" : "password"}
+                  value={passwordForm.currentPassword}
+                  onChange={(event) =>
+                    setPasswordForm((current) => ({ ...current, currentPassword: event.target.value }))
+                  }
+                  disabled={isSaving}
+                  required
+                />
+              </label>
+              <label className="stack-xs form-field" htmlFor={`${formId}-new-password`}>
+                <span>Yeni şifre *</span>
+                <input
+                  id={`${formId}-new-password`}
+                  type={showPassword ? "text" : "password"}
+                  value={passwordForm.newPassword}
+                  onChange={(event) =>
+                    setPasswordForm((current) => ({ ...current, newPassword: event.target.value }))
+                  }
+                  disabled={isSaving}
+                  required
+                  minLength={PASSWORD_MIN_LENGTH}
+                  title={getPasswordValidationMessage()}
+                />
+              </label>
+              <label className="stack-xs form-field" htmlFor={`${formId}-confirm-password`}>
+                <span>Yeni şifre tekrar *</span>
+                <input
+                  id={`${formId}-confirm-password`}
+                  type={showPassword ? "text" : "password"}
+                  value={passwordForm.confirmPassword}
+                  onChange={(event) =>
+                    setPasswordForm((current) => ({ ...current, confirmPassword: event.target.value }))
+                  }
+                  disabled={isSaving}
+                  required
+                  minLength={PASSWORD_MIN_LENGTH}
+                  title={getPasswordValidationMessage()}
+                />
+              </label>
             </div>
           )}
         </article>
@@ -311,74 +381,106 @@ const AdminProfilePage = () => {
             <h2>Genel site bilgileri</h2>
           </div>
           <div className="form-grid">
-            <input
-              placeholder="Hero başlığı"
-              value={siteForm.heroTitle}
-              onChange={(event) => handleSiteChange("heroTitle", event.target.value)}
-              disabled={!editing}
-              required
-            />
-            <input
-              placeholder="Telefon"
-              value={siteForm.phone}
-              onChange={(event) => handleSiteChange("phone", event.target.value)}
-              disabled={!editing}
-              required
-            />
-            <input
-              placeholder="E-posta"
-              type="email"
-              value={siteForm.email}
-              onChange={(event) => handleSiteChange("email", event.target.value)}
-              disabled={!editing}
-              required
-            />
-            <input
-              placeholder="Çalışma saatleri"
-              value={siteForm.workingHours}
-              onChange={(event) => handleSiteChange("workingHours", event.target.value)}
-              disabled={!editing}
-              required
-            />
-            <input
-              placeholder="Instagram"
-              value={siteForm.socialLinks.instagram}
-              onChange={(event) => handleNestedSiteChange("socialLinks", "instagram", event.target.value)}
-              disabled={!editing}
-            />
-            <input
-              placeholder="Facebook"
-              value={siteForm.socialLinks.facebook}
-              onChange={(event) => handleNestedSiteChange("socialLinks", "facebook", event.target.value)}
-              disabled={!editing}
-            />
-            <input
-              placeholder="WhatsApp"
-              value={siteForm.socialLinks.whatsapp}
-              onChange={(event) => handleNestedSiteChange("socialLinks", "whatsapp", event.target.value)}
-              disabled={!editing}
-            />
-            <input
-              placeholder="Harita bağlantısı"
-              value={siteForm.mapUrl}
-              onChange={(event) => handleSiteChange("mapUrl", event.target.value)}
-              disabled={!editing}
-            />
+            <label className="stack-xs form-field" htmlFor={`${formId}-hero-title`}>
+              <span>Hero başlığı *</span>
+              <input
+                id={`${formId}-hero-title`}
+                value={siteForm.heroTitle}
+                onChange={(event) => handleSiteChange("heroTitle", event.target.value)}
+                disabled={!editing || isSaving}
+                required
+              />
+            </label>
+            <label className="stack-xs form-field" htmlFor={`${formId}-site-phone`}>
+              <span>Telefon *</span>
+              <input
+                id={`${formId}-site-phone`}
+                value={siteForm.phone}
+                onChange={(event) => handleSiteChange("phone", event.target.value)}
+                disabled={!editing || isSaving}
+                required
+                pattern={PHONE_INPUT_PATTERN}
+                title={PHONE_INPUT_TITLE}
+              />
+            </label>
+            <label className="stack-xs form-field" htmlFor={`${formId}-site-email`}>
+              <span>E-posta *</span>
+              <input
+                id={`${formId}-site-email`}
+                type="email"
+                value={siteForm.email}
+                onChange={(event) => handleSiteChange("email", event.target.value)}
+                disabled={!editing || isSaving}
+                required
+              />
+            </label>
+            <label className="stack-xs form-field" htmlFor={`${formId}-working-hours`}>
+              <span>Çalışma saatleri *</span>
+              <input
+                id={`${formId}-working-hours`}
+                value={siteForm.workingHours}
+                onChange={(event) => handleSiteChange("workingHours", event.target.value)}
+                disabled={!editing || isSaving}
+                required
+              />
+            </label>
+            <label className="stack-xs form-field" htmlFor={`${formId}-instagram`}>
+              <span>Instagram</span>
+              <input
+                id={`${formId}-instagram`}
+                value={siteForm.socialLinks.instagram}
+                onChange={(event) => handleNestedSiteChange("socialLinks", "instagram", event.target.value)}
+                disabled={!editing || isSaving}
+              />
+            </label>
+            <label className="stack-xs form-field" htmlFor={`${formId}-facebook`}>
+              <span>Facebook</span>
+              <input
+                id={`${formId}-facebook`}
+                value={siteForm.socialLinks.facebook}
+                onChange={(event) => handleNestedSiteChange("socialLinks", "facebook", event.target.value)}
+                disabled={!editing || isSaving}
+              />
+            </label>
+            <label className="stack-xs form-field" htmlFor={`${formId}-whatsapp`}>
+              <span>WhatsApp</span>
+              <input
+                id={`${formId}-whatsapp`}
+                value={siteForm.socialLinks.whatsapp}
+                onChange={(event) => handleNestedSiteChange("socialLinks", "whatsapp", event.target.value)}
+                disabled={!editing || isSaving}
+              />
+            </label>
+            <label className="stack-xs form-field" htmlFor={`${formId}-map-url`}>
+              <span>Harita bağlantısı</span>
+              <input
+                id={`${formId}-map-url`}
+                value={siteForm.mapUrl}
+                onChange={(event) => handleSiteChange("mapUrl", event.target.value)}
+                disabled={!editing || isSaving}
+              />
+            </label>
           </div>
-          <textarea
-            placeholder="Hero açıklaması"
-            value={siteForm.heroDescription}
-            onChange={(event) => handleSiteChange("heroDescription", event.target.value)}
-            disabled={!editing}
-            required
-          />
-          <textarea
-            placeholder="İletişim adresi veya açıklaması"
-            value={siteForm.address}
-            onChange={(event) => handleSiteChange("address", event.target.value)}
-            disabled={!editing}
-            required
-          />
+          <label className="stack-xs form-field" htmlFor={`${formId}-hero-description`}>
+            <span>Hero açıklaması *</span>
+            <textarea
+              id={`${formId}-hero-description`}
+              value={siteForm.heroDescription}
+              onChange={(event) => handleSiteChange("heroDescription", event.target.value)}
+              disabled={!editing || isSaving}
+              required
+            />
+          </label>
+          <label className="stack-xs form-field" htmlFor={`${formId}-site-address`}>
+            <span>İletişim adresi veya açıklaması *</span>
+            <textarea
+              id={`${formId}-site-address`}
+              value={siteForm.address}
+              onChange={(event) => handleSiteChange("address", event.target.value)}
+              disabled={!editing || isSaving}
+              required
+            />
+          </label>
         </article>
 
         <article className="panel profile-card">

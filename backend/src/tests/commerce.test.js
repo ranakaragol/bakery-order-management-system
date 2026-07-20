@@ -194,10 +194,30 @@ describe("commerce validators", () => {
         email: "rana@example.com"
       }
     });
+    const invalidPhonePayload = await runValidators(createOrderValidator, {
+      deliveryAddress: {
+        province: "istanbul",
+        district: "besiktas",
+        neighborhood: "Levent Mahallesi",
+        streetAddress: "Levent Mahallesi"
+      },
+      notes: "Kapıyı çalınız.",
+      paymentMethod: "bank_transfer",
+      invoiceInfo: {
+        fullName: "Rana Karagöl",
+        companyName: "Paşalı Patiserrie",
+        taxNumber: "1234567890",
+        taxOffice: "Kadıköy",
+        billingAddress: "İstanbul",
+        phone: "12",
+        email: "rana@example.com"
+      }
+    });
 
     expect(validPayload.errors.isEmpty()).toBe(true);
     expect(missingDistrictPayload.errors.isEmpty()).toBe(false);
     expect(invalidDistrictPairPayload.errors.isEmpty()).toBe(false);
     expect(invalidPayload.errors.isEmpty()).toBe(false);
+    expect(invalidPhonePayload.errors.isEmpty()).toBe(false);
   });
 });

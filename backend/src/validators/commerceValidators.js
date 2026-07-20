@@ -1,6 +1,7 @@
 import { body } from "express-validator";
 import { sanitizeQuantity } from "../../../shared/commerce.js";
 import { isValidProvinceDistrictPair, normalizeProvinceValue } from "../../../shared/deliveryZones.js";
+import { billingAddressFieldLabels, billingAddressFields, isValidProfilePhone } from "../../../shared/profile.js";
 
 export const addToCartValidator = [
   body("productId").trim().notEmpty().withMessage("Ürün kimliği zorunludur."),
@@ -18,6 +19,25 @@ export const updateCartItemValidator = [
     .custom((value) => Number.isFinite(value) && value >= 0.1)
     .withMessage("Miktar en az 0.1 olmalıdır.")
 ];
+
+const invoiceInfoFieldValidators = billingAddressFields.map((field) => {
+  const validator = body(`invoiceInfo.${field}`)
+    .trim()
+    .notEmpty()
+    .withMessage(`${billingAddressFieldLabels[field] || field} zorunludur.`);
+
+  if (field === "email") {
+    return validator.isEmail().withMessage("Geçerli bir fatura e-postası zorunludur.");
+  }
+
+  if (field === "phone") {
+    return validator
+      .custom((value) => isValidProfilePhone(value))
+      .withMessage("Geçerli bir fatura telefonu zorunludur.");
+  }
+
+  return validator;
+});
 
 export const createOrderValidator = [
   body("deliveryAddress.province").trim().notEmpty().withMessage("Teslimat ili zorunludur."),
@@ -42,35 +62,7 @@ export const createOrderValidator = [
     .trim()
     .isIn(["bank_transfer", "cash_on_delivery"])
     .withMessage("Geçerli bir ödeme yöntemi seçilmelidir."),
-  body("invoiceInfo.fullName")
-    .trim()
-    .notEmpty()
-    .withMessage("Fatura ad soyad zorunludur."),
-  body("invoiceInfo.companyName")
-    .trim()
-    .notEmpty()
-    .withMessage("Şirket adı zorunludur."),
-  body("invoiceInfo.taxNumber")
-    .trim()
-    .notEmpty()
-    .withMessage("Vergi numarası zorunludur."),
-  body("invoiceInfo.taxOffice")
-    .trim()
-    .notEmpty()
-    .withMessage("Vergi dairesi zorunludur."),
-  body("invoiceInfo.billingAddress")
-    .trim()
-    .notEmpty()
-    .withMessage("Fatura adresi zorunludur."),
-  body("invoiceInfo.phone")
-    .trim()
-    .notEmpty()
-    .withMessage("Fatura telefonu zorunludur."),
-  body("invoiceInfo.email")
-    .trim()
-    .notEmpty()
-    .isEmail()
-    .withMessage("Geçerli bir fatura e-postası zorunludur.")
+  ...invoiceInfoFieldValidators
 ];
 
 export const statusValidator = [

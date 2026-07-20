@@ -3,6 +3,7 @@ import { normalizeBillingAddress } from "../../../shared/profile.js";
 
 const mocks = vi.hoisted(() => ({
   cartFindOne: vi.fn(),
+  categoryFind: vi.fn(),
   invoiceFindById: vi.fn(),
   invoiceCreate: vi.fn(),
   orderCreate: vi.fn(),
@@ -13,6 +14,12 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../models/Cart.js", () => ({
   default: {
     findOne: mocks.cartFindOne
+  }
+}));
+
+vi.mock("../models/Category.js", () => ({
+  default: {
+    find: mocks.categoryFind
   }
 }));
 
@@ -68,21 +75,25 @@ const createCustomer = (overrides = {}) => ({
   ...overrides
 });
 
-const createCart = (unitPrice) => ({
+const createCart = (unitPrice, productOverrides = {}, itemOverrides = {}) => ({
   items: [
     {
       product: {
         _id: "product-1",
         name: "Profiterol",
         price: unitPrice,
-        unit: "adet"
+        unit: "adet",
+        stockStatus: "in_stock",
+        isActive: true,
+        ...productOverrides
       },
       quantity: 1,
       unitSnapshot: "adet",
       nameSnapshot: "Profiterol",
       imageUrlSnapshot: "/assets/products/profiterol.jpg",
       variantId: "",
-      variantName: ""
+      variantName: "",
+      ...itemOverrides
     }
   ],
   itemCount: 1,
@@ -98,7 +109,8 @@ const createInvoiceInfo = () => ({
   taxNumber: "1234567890",
   billingAddress: "Fulya Mah. Şişli / İstanbul",
   phone: "05321234567",
-  email: "rana@example.com"
+  email: "rana@example.com",
+  save: vi.fn().mockResolvedValue(undefined)
 });
 
 const mockSuccessfulOrderRead = (orderId = "order-1") => {
@@ -117,7 +129,8 @@ const buildOrderBody = (
   district,
   neighborhood,
   streetAddress,
-  paymentMethod = "cash_on_delivery"
+  paymentMethod = "cash_on_delivery",
+  invoiceInfo = {}
 ) => ({
   deliveryAddress: {
     addressTitle: "Merkez",
@@ -129,15 +142,33 @@ const buildOrderBody = (
   },
   notes: "",
   paymentMethod,
-  invoiceInfo: {}
+  invoiceInfo
 });
 
-const executeOrder = async ({ unitPrice, province, district, neighborhood, streetAddress, paymentMethod }) => {
+const executeOrder = async ({
+  unitPrice,
+  province,
+  district,
+  neighborhood,
+  streetAddress,
+  paymentMethod,
+  productOverrides = {},
+  itemOverrides = {},
+  invoiceInfo = {},
+  customerOverrides = {}
+}) => {
   const response = createResponse();
+  const cart = createCart(unitPrice, productOverrides, itemOverrides);
 
   mocks.cartFindOne.mockReturnValue({
-    populate: vi.fn().mockResolvedValue(createCart(unitPrice))
+    populate: vi.fn().mockResolvedValue(cart)
   });
+  mocks.categoryFind.mockResolvedValue([
+    {
+      _id: "product-1-category",
+      isActive: true
+    }
+  ]);
 
   if (
     unitPrice >= 2000 ||
@@ -150,44 +181,17 @@ const executeOrder = async ({ unitPrice, province, district, neighborhood, stree
 
   await createOrder(
     {
-      body: buildOrderBody(province, district, neighborhood, streetAddress, paymentMethod),
-      user: createCustomer()
-    },
-    response,
-    vi.fn()
-  );
-
-  return response;
-};
-
-const executeOrderWithCustomerOverrides = async ({
-  unitPrice,
-  province,
-  district,
-  neighborhood,
-  streetAddress,
-  paymentMethod,
-  customerOverrides
-}) => {
-  const response = createResponse();
-
-  mocks.cartFindOne.mockReturnValue({
-    populate: vi.fn().mockResolvedValue(createCart(unitPrice))
-  });
-  mocks.invoiceFindById.mockResolvedValue(createInvoiceInfo());
-  mocks.orderCreate.mockResolvedValue({ _id: "order-1" });
-  mockSuccessfulOrderRead();
-
-  await createOrder(
-    {
-      body: buildOrderBody(province, district, neighborhood, streetAddress, paymentMethod),
+      body: buildOrderBody(province, district, neighborhood, streetAddress, paymentMethod, invoiceInfo),
       user: createCustomer(customerOverrides)
     },
     response,
     vi.fn()
   );
 
-  return response;
+  return {
+    response,
+    cart
+  };
 };
 
 describe("createOrder regional delivery rules", () => {
@@ -196,7 +200,7 @@ describe("createOrder regional delivery rules", () => {
   });
 
   it("accepts Istanbul Kadikoy 1500 TL and keeps delivery free", async () => {
-    const response = await executeOrder({
+    const { response } = await executeOrder({
       unitPrice: 1500,
       province: "istanbul",
       district: "kadikoy",
@@ -224,7 +228,130 @@ describe("createOrder regional delivery rules", () => {
   });
 
   it("accepts checkout invoice info even when the user billing address is not stored yet", async () => {
-    const response = await executeOrderWithCustomerOverrides({
+    const { response: firstOrderResponse } = await executeOrder({
+      unitPrice: 1500,
+      province: "istanbul",
+      district: "kadikoy",
+      neighborhood: "Caferağa Mahallesi",
+      streetAddress: "Moda Caddesi",
+      invoiceInfo: {
+        fullName: "Rana Karagöl",
+        companyName: "Paşalı Patiserrie",
+        taxOffice: "Kadıköy",
+        taxNumber: "1234567890",
+        email: "rana@example.com",
+        phone: "05321234567",
+        billingAddress: "Moda Caddesi, Kadıköy / İstanbul"
+      },
+      customerOverrides: {
+        billingAddress: {
+          fullName: "",
+          companyName: "",
+          taxOffice: "",
+          taxNumber: "",
+          email: "",
+          phone: "",
+          billingAddress: ""
+        }
+      }
+    });
+
+    expect(firstOrderResponse.status).toHaveBeenCalledWith(201);
+    expect(mocks.orderCreate).toHaveBeenCalled();
+  });
+
+  it("accepts Istanbul Uskudar 1999.99 TL", async () => {
+    const { response } = await executeOrder({
+      unitPrice: 1999.99,
+      province: "istanbul",
+      district: "uskudar",
+      neighborhood: "Altunizade Mahallesi",
+      streetAddress: "Altunizade"
+    });
+
+    expect(response.status).toHaveBeenCalledWith(201);
+  });
+
+  it("rejects Istanbul Besiktas 1999.99 TL", async () => {
+    const { response } = await executeOrder({
+      unitPrice: 1999.99,
+      province: "istanbul",
+      district: "besiktas",
+      neighborhood: "Levent Mahallesi",
+      streetAddress: "Levent"
+    });
+
+    expect(response.status).toHaveBeenCalledWith(422);
+    expect(response.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        code: "DELIVERY_REGION_MINIMUM_ORDER",
+        remainingAmount: 0.01,
+        region: "istanbul_european"
+      })
+    );
+    expect(mocks.orderCreate).not.toHaveBeenCalled();
+  });
+
+  it("accepts Istanbul Besiktas at and above 2000 TL", async () => {
+    const { response: exactResponse } = await executeOrder({
+      unitPrice: 2000,
+      province: "istanbul",
+      district: "besiktas",
+      neighborhood: "Levent Mahallesi",
+      streetAddress: "Levent"
+    });
+    const { response: aboveResponse } = await executeOrder({
+      unitPrice: 2125,
+      province: "istanbul",
+      district: "besiktas",
+      neighborhood: "Levent Mahallesi",
+      streetAddress: "Levent"
+    });
+
+    expect(exactResponse.status).toHaveBeenCalledWith(201);
+    expect(aboveResponse.status).toHaveBeenCalledWith(201);
+  });
+
+  it("rejects Kocaeli Izmit 1999.99 TL and accepts 2000 TL", async () => {
+    const { response: belowResponse } = await executeOrder({
+      unitPrice: 1999.99,
+      province: "kocaeli",
+      district: "izmit",
+      neighborhood: "Yahya Kaptan Mahallesi",
+      streetAddress: "Yahya Kaptan"
+    });
+    const { response: exactResponse } = await executeOrder({
+      unitPrice: 2000,
+      province: "kocaeli",
+      district: "izmit",
+      neighborhood: "Yahya Kaptan Mahallesi",
+      streetAddress: "Yahya Kaptan"
+    });
+
+    expect(belowResponse.status).toHaveBeenCalledWith(422);
+    expect(exactResponse.status).toHaveBeenCalledWith(201);
+  });
+
+  it("rejects invalid province and district combinations", async () => {
+    const { response } = await executeOrder({
+      unitPrice: 2100,
+      province: "istanbul",
+      district: "izmit",
+      neighborhood: "Gecersiz Mahalle",
+      streetAddress: "Gecersiz eslesme"
+    });
+
+    expect(response.status).toHaveBeenCalledWith(400);
+    expect(response.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "Teslimat ili ve ilçesi geçersiz veya birbiriyle uyumsuz."
+      })
+    );
+  });
+
+  it("rejects missing first-order invoice details when the user has no saved billing address", async () => {
+    const { response } = await executeOrder({
       unitPrice: 1500,
       province: "istanbul",
       district: "kadikoy",
@@ -239,100 +366,117 @@ describe("createOrder regional delivery rules", () => {
           email: "",
           phone: "",
           billingAddress: ""
-        }
+        },
+        invoiceInfo: null
       }
-    });
-
-    expect(response.status).toHaveBeenCalledWith(201);
-    expect(mocks.orderCreate).toHaveBeenCalled();
-  });
-
-  it("accepts Istanbul Uskudar 1999.99 TL", async () => {
-    const response = await executeOrder({
-      unitPrice: 1999.99,
-      province: "istanbul",
-      district: "uskudar",
-      neighborhood: "Altunizade Mahallesi",
-      streetAddress: "Altunizade"
-    });
-
-    expect(response.status).toHaveBeenCalledWith(201);
-  });
-
-  it("rejects Istanbul Besiktas 1999.99 TL", async () => {
-    const response = await executeOrder({
-      unitPrice: 1999.99,
-      province: "istanbul",
-      district: "besiktas",
-      neighborhood: "Levent Mahallesi",
-      streetAddress: "Levent"
-    });
-
-    expect(response.status).toHaveBeenCalledWith(422);
-    expect(response.json).toHaveBeenCalledWith(
-      expect.objectContaining({
-        code: "DELIVERY_REGION_MINIMUM_ORDER",
-        remainingAmount: 0.01,
-        region: "istanbul_european"
-      })
-    );
-    expect(mocks.orderCreate).not.toHaveBeenCalled();
-  });
-
-  it("accepts Istanbul Besiktas at and above 2000 TL", async () => {
-    const exactResponse = await executeOrder({
-      unitPrice: 2000,
-      province: "istanbul",
-      district: "besiktas",
-      neighborhood: "Levent Mahallesi",
-      streetAddress: "Levent"
-    });
-    const aboveResponse = await executeOrder({
-      unitPrice: 2125,
-      province: "istanbul",
-      district: "besiktas",
-      neighborhood: "Levent Mahallesi",
-      streetAddress: "Levent"
-    });
-
-    expect(exactResponse.status).toHaveBeenCalledWith(201);
-    expect(aboveResponse.status).toHaveBeenCalledWith(201);
-  });
-
-  it("rejects Kocaeli Izmit 1999.99 TL and accepts 2000 TL", async () => {
-    const belowResponse = await executeOrder({
-      unitPrice: 1999.99,
-      province: "kocaeli",
-      district: "izmit",
-      neighborhood: "Yahya Kaptan Mahallesi",
-      streetAddress: "Yahya Kaptan"
-    });
-    const exactResponse = await executeOrder({
-      unitPrice: 2000,
-      province: "kocaeli",
-      district: "izmit",
-      neighborhood: "Yahya Kaptan Mahallesi",
-      streetAddress: "Yahya Kaptan"
-    });
-
-    expect(belowResponse.status).toHaveBeenCalledWith(422);
-    expect(exactResponse.status).toHaveBeenCalledWith(201);
-  });
-
-  it("rejects invalid province and district combinations", async () => {
-    const response = await executeOrder({
-      unitPrice: 2100,
-      province: "istanbul",
-      district: "izmit",
-      neighborhood: "Gecersiz Mahalle",
-      streetAddress: "Gecersiz eslesme"
     });
 
     expect(response.status).toHaveBeenCalledWith(400);
     expect(response.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        message: "Teslimat ili ve ilçesi geçersiz veya birbiriyle uyumsuz."
+        message: expect.stringContaining("Fatura bilgileri eksik:")
       })
     );
+    expect(mocks.orderCreate).not.toHaveBeenCalled();
+  });
+
+  it("uses the current backend price instead of the cart snapshot price", async () => {
+    const { response } = await executeOrder({
+      unitPrice: 2150,
+      province: "istanbul",
+      district: "besiktas",
+      neighborhood: "Levent Mahallesi",
+      streetAddress: "Levent",
+      itemOverrides: {
+        unitPrice: 999,
+        lineTotal: 999
+      }
+    });
+
+    expect(response.status).toHaveBeenCalledWith(201);
+    expect(mocks.orderCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subtotal: 2150,
+        totalAmount: 2150,
+        items: [
+          expect.objectContaining({
+            unitPrice: 2150,
+            lineTotal: 2150
+          })
+        ]
+      })
+    );
+  });
+
+  it("rejects inactive products during order creation and keeps the cart intact", async () => {
+    const { response, cart } = await executeOrder({
+      unitPrice: 2100,
+      province: "istanbul",
+      district: "besiktas",
+      neighborhood: "Levent Mahallesi",
+      streetAddress: "Levent",
+      productOverrides: {
+        isActive: false
+      }
+    });
+
+    expect(response.status).toHaveBeenCalledWith(409);
+    expect(response.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: "ORDER_ITEM_INACTIVE"
+      })
+    );
+    expect(mocks.orderCreate).not.toHaveBeenCalled();
+    expect(cart.save).not.toHaveBeenCalled();
+  });
+
+  it("rejects out-of-stock products during order creation and keeps the cart intact", async () => {
+    const { response, cart } = await executeOrder({
+      unitPrice: 2100,
+      province: "istanbul",
+      district: "besiktas",
+      neighborhood: "Levent Mahallesi",
+      streetAddress: "Levent",
+      productOverrides: {
+        stockStatus: "out_of_stock"
+      }
+    });
+
+    expect(response.status).toHaveBeenCalledWith(409);
+    expect(response.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: "ORDER_ITEM_OUT_OF_STOCK"
+      })
+    );
+    expect(mocks.orderCreate).not.toHaveBeenCalled();
+    expect(cart.save).not.toHaveBeenCalled();
+  });
+
+  it("rejects removed products during order creation and keeps the cart intact", async () => {
+    const response = createResponse();
+    const cart = createCart(2100);
+    cart.items[0].product = null;
+
+    mocks.cartFindOne.mockReturnValue({
+      populate: vi.fn().mockResolvedValue(cart)
+    });
+
+    await createOrder(
+      {
+        body: buildOrderBody("istanbul", "besiktas", "Levent Mahallesi", "Levent"),
+        user: createCustomer()
+      },
+      response,
+      vi.fn()
+    );
+
+    expect(response.status).toHaveBeenCalledWith(409);
+    expect(response.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: "ORDER_ITEM_REMOVED"
+      })
+    );
+    expect(mocks.orderCreate).not.toHaveBeenCalled();
+    expect(cart.save).not.toHaveBeenCalled();
   });
 });

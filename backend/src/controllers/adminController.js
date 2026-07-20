@@ -5,6 +5,7 @@ import Product from "../models/Product.js";
 import User from "../models/User.js";
 import { pasaliContactInfo } from "../../../shared/pasaliCatalogData.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { sendError } from "../utils/apiResponses.js";
 import { ensureCatalogDataSynchronized } from "../utils/catalogSync.js";
 import { sanitizeUser } from "../utils/sanitizeUser.js";
 
@@ -71,7 +72,7 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id);
 
   if (!order) {
-    return res.status(404).json({ message: "Sipariş bulunamadı." });
+    return sendError(res, 404, { message: "Sipariş bulunamadı." });
   }
 
   order.status = req.body.status;
@@ -95,7 +96,7 @@ export const getCustomerById = asyncHandler(async (req, res) => {
   const customer = await User.findOne({ _id: req.params.id, role: "customer" }).populate("invoiceInfo");
 
   if (!customer) {
-    return res.status(404).json({ message: "Müşteri bulunamadı." });
+    return sendError(res, 404, { message: "Müşteri bulunamadı." });
   }
 
   const orders = await Order.find({ user: customer._id }).sort({ createdAt: -1 });

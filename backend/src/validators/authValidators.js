@@ -1,6 +1,8 @@
 import { body } from "express-validator";
 import {
+  PASSWORD_MIN_LENGTH,
   billingAddressFields,
+  isValidPasswordLength,
   isValidProfilePhone
 } from "../../../shared/profile.js";
 import { isValidProvinceDistrictPair, normalizeProvinceValue } from "../../../shared/deliveryZones.js";
@@ -10,9 +12,15 @@ export const registerValidator = [
   body("lastName").trim().notEmpty().withMessage("Last name is required."),
   body("email").isEmail().withMessage("A valid email address is required."),
   body("password")
-    .isLength({ min: 6 })
-    .withMessage("Password must be at least 6 characters long."),
-  body("phone").trim().notEmpty().withMessage("Phone number is required."),
+    .custom((value) => isValidPasswordLength(value))
+    .withMessage(`Password must be at least ${PASSWORD_MIN_LENGTH} characters long.`),
+  body("phone")
+    .trim()
+    .notEmpty()
+    .withMessage("Phone number is required.")
+    .bail()
+    .custom((value) => isValidProfilePhone(value))
+    .withMessage("Phone number format is invalid."),
   body("deliveryAddress.province").trim().notEmpty().withMessage("Province is required."),
   body("deliveryAddress.district").trim().notEmpty().withMessage("District is required."),
   body("deliveryAddress.neighborhood").trim().notEmpty().withMessage("Neighborhood is required."),
@@ -95,6 +103,6 @@ export const profilePasswordValidator = [
   body("currentPassword").trim().notEmpty().withMessage("Current password is required."),
   body("newPassword")
     .trim()
-    .isLength({ min: 8 })
-    .withMessage("New password must be at least 8 characters long.")
+    .custom((value) => isValidPasswordLength(value))
+    .withMessage(`New password must be at least ${PASSWORD_MIN_LENGTH} characters long.`)
 ];

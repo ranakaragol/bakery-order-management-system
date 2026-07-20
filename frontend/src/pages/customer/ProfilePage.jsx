@@ -1,7 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import DeliveryAddressFields from "../../components/DeliveryAddressFields";
+import FormMessage from "../../components/FormMessage";
+import LoadingState from "../../components/LoadingState";
 import { useAuth } from "../../context/AuthContext";
 import { getApiErrorMessage } from "../../utils/apiErrors";
+import {
+  PASSWORD_MIN_LENGTH,
+  PHONE_INPUT_PATTERN,
+  PHONE_INPUT_TITLE,
+  getPasswordValidationMessage,
+  getPhoneValidationMessage,
+  isValidPasswordLength,
+  isValidProfilePhone
+} from "../../utils/accountValidation";
 import { buildProfileForm } from "../../utils/deliveryAddressForms";
 import {
   hasCompleteDeliveryAddress,
@@ -16,6 +27,7 @@ const emptyPasswordForm = {
 
 const ProfilePage = () => {
   const { authReady, user, refreshProfile, updateProfile, changePassword } = useAuth();
+  const formId = useId();
   const [form, setForm] = useState(() => buildProfileForm(user));
   const [savedForm, setSavedForm] = useState(() => buildProfileForm(user));
   const [profileReady, setProfileReady] = useState(() => Boolean(user));
@@ -25,14 +37,19 @@ const ProfilePage = () => {
   const [passwordForm, setPasswordForm] = useState(emptyPasswordForm);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const userRef = useRef(user);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
 
   useEffect(() => {
     if (!authReady) {
       return undefined;
     }
 
-    if (user) {
-      const nextForm = buildProfileForm(user);
+    if (userRef.current) {
+      const nextForm = buildProfileForm(userRef.current);
       setForm(nextForm);
       setSavedForm(nextForm);
       setProfileReady(true);
@@ -42,7 +59,7 @@ const ProfilePage = () => {
 
     const syncProfile = async () => {
       const refreshedUser = await refreshProfile();
-      const nextForm = buildProfileForm(refreshedUser || user || null);
+      const nextForm = buildProfileForm(refreshedUser || userRef.current || null);
 
       if (cancelled) {
         return;
@@ -57,7 +74,7 @@ const ProfilePage = () => {
     return () => {
       cancelled = true;
     };
-  }, [authReady]);
+  }, [authReady, refreshProfile]);
 
   useEffect(() => {
     if (!user || editing || changingPassword) {
@@ -110,6 +127,21 @@ const ProfilePage = () => {
     setError("");
     setSuccessMessage("");
 
+    if (!isValidProfilePhone(form.phone)) {
+      setError(getPhoneValidationMessage("Telefon numarası"));
+      return;
+    }
+
+    if (form.billingAddress.phone && !isValidProfilePhone(form.billingAddress.phone)) {
+      setError(getPhoneValidationMessage("Fatura telefonu"));
+      return;
+    }
+
+    if (changingPassword && passwordForm.newPassword && !isValidPasswordLength(passwordForm.newPassword)) {
+      setError(getPasswordValidationMessage());
+      return;
+    }
+
     if (changingPassword && passwordForm.newPassword !== passwordForm.confirmPassword) {
       setError("Yeni şifreler birbiriyle eşleşmiyor.");
       return;
@@ -147,7 +179,7 @@ const ProfilePage = () => {
   };
 
   if (!profileReady) {
-    return <section className="panel">Profil bilgileriniz yukleniyor...</section>;
+    return <LoadingState message="Profil bilgileriniz yükleniyor..." />;
   }
 
   return (
@@ -165,35 +197,49 @@ const ProfilePage = () => {
             <h2>Hesap Bilgileri</h2>
           </div>
           <div className="form-grid">
-            <input
-              placeholder="Ad"
-              value={form.firstName}
-              onChange={(event) => handleAccountChange("firstName", event.target.value)}
-              disabled={!editing}
-              required
-            />
-            <input
-              placeholder="Soyad"
-              value={form.lastName}
-              onChange={(event) => handleAccountChange("lastName", event.target.value)}
-              disabled={!editing}
-              required
-            />
-            <input
-              type="email"
-              placeholder="E-posta"
-              value={form.email}
-              onChange={(event) => handleAccountChange("email", event.target.value)}
-              disabled={!editing}
-              required
-            />
-            <input
-              placeholder="Telefon"
-              value={form.phone}
-              onChange={(event) => handleAccountChange("phone", event.target.value)}
-              disabled={!editing}
-              required
-            />
+            <label className="stack-xs form-field" htmlFor={`${formId}-first-name`}>
+              <span>Ad *</span>
+              <input
+                id={`${formId}-first-name`}
+                value={form.firstName}
+                onChange={(event) => handleAccountChange("firstName", event.target.value)}
+                disabled={!editing}
+                required
+              />
+            </label>
+            <label className="stack-xs form-field" htmlFor={`${formId}-last-name`}>
+              <span>Soyad *</span>
+              <input
+                id={`${formId}-last-name`}
+                value={form.lastName}
+                onChange={(event) => handleAccountChange("lastName", event.target.value)}
+                disabled={!editing}
+                required
+              />
+            </label>
+            <label className="stack-xs form-field" htmlFor={`${formId}-email`}>
+              <span>E-posta *</span>
+              <input
+                id={`${formId}-email`}
+                type="email"
+                value={form.email}
+                onChange={(event) => handleAccountChange("email", event.target.value)}
+                disabled={!editing}
+                required
+              />
+            </label>
+            <label className="stack-xs form-field" htmlFor={`${formId}-phone`}>
+              <span>Telefon *</span>
+              <input
+                id={`${formId}-phone`}
+                value={form.phone}
+                onChange={(event) => handleAccountChange("phone", event.target.value)}
+                disabled={!editing}
+                required
+                pattern={PHONE_INPUT_PATTERN}
+                title={PHONE_INPUT_TITLE}
+              />
+            </label>
           </div>
 
           <div className="profile-password-block">
@@ -227,33 +273,46 @@ const ProfilePage = () => {
 
           {changingPassword && (
             <div className="form-grid">
-              <input
-                type={showPassword ? "text" : "password"}
-                placeholder="Eski şifre"
-                value={passwordForm.currentPassword}
-                onChange={(event) =>
-                  setPasswordForm((current) => ({ ...current, currentPassword: event.target.value }))
-                }
-                required
-              />
-              <input
-                type={showPassword ? "text" : "password"}
-                placeholder="Yeni şifre"
-                value={passwordForm.newPassword}
-                onChange={(event) =>
-                  setPasswordForm((current) => ({ ...current, newPassword: event.target.value }))
-                }
-                required
-              />
-              <input
-                type={showPassword ? "text" : "password"}
-                placeholder="Yeni şifre tekrar"
-                value={passwordForm.confirmPassword}
-                onChange={(event) =>
-                  setPasswordForm((current) => ({ ...current, confirmPassword: event.target.value }))
-                }
-                required
-              />
+              <label className="stack-xs form-field" htmlFor={`${formId}-current-password`}>
+                <span>Mevcut şifre *</span>
+                <input
+                  id={`${formId}-current-password`}
+                  type={showPassword ? "text" : "password"}
+                  value={passwordForm.currentPassword}
+                  onChange={(event) =>
+                    setPasswordForm((current) => ({ ...current, currentPassword: event.target.value }))
+                  }
+                  required
+                />
+              </label>
+              <label className="stack-xs form-field" htmlFor={`${formId}-new-password`}>
+                <span>Yeni şifre *</span>
+                <input
+                  id={`${formId}-new-password`}
+                  type={showPassword ? "text" : "password"}
+                  value={passwordForm.newPassword}
+                  onChange={(event) =>
+                    setPasswordForm((current) => ({ ...current, newPassword: event.target.value }))
+                  }
+                  required
+                  minLength={PASSWORD_MIN_LENGTH}
+                  title={getPasswordValidationMessage()}
+                />
+              </label>
+              <label className="stack-xs form-field" htmlFor={`${formId}-confirm-password`}>
+                <span>Yeni şifre tekrar *</span>
+                <input
+                  id={`${formId}-confirm-password`}
+                  type={showPassword ? "text" : "password"}
+                  value={passwordForm.confirmPassword}
+                  onChange={(event) =>
+                    setPasswordForm((current) => ({ ...current, confirmPassword: event.target.value }))
+                  }
+                  required
+                  minLength={PASSWORD_MIN_LENGTH}
+                  title={getPasswordValidationMessage()}
+                />
+              </label>
             </div>
           )}
         </article>
@@ -272,6 +331,7 @@ const ProfilePage = () => {
             value={form.deliveryAddress}
             onChange={(deliveryAddress) => handleAccountChange("deliveryAddress", deliveryAddress)}
             disabled={!editing}
+            idPrefix={`${formId}-delivery`}
             required
           />
         </article>
@@ -285,61 +345,84 @@ const ProfilePage = () => {
             <div className="info-banner">Sipariş verebilmek için bu bölümdeki tüm alanları doldurmanız gerekir.</div>
           )}
           <div className="form-grid">
-            <input
-              placeholder="Fatura ad soyad"
-              value={form.billingAddress.fullName}
-              onChange={(event) => handleBillingAddressChange("fullName", event.target.value)}
-              disabled={!editing}
-            />
-            <input
-              placeholder="Şirket adı"
-              value={form.billingAddress.companyName}
-              onChange={(event) => handleBillingAddressChange("companyName", event.target.value)}
-              disabled={!editing}
-            />
-            <input
-              placeholder="Vergi dairesi"
-              value={form.billingAddress.taxOffice}
-              onChange={(event) => handleBillingAddressChange("taxOffice", event.target.value)}
-              disabled={!editing}
-            />
-            <input
-              placeholder="Vergi numarası"
-              value={form.billingAddress.taxNumber}
-              onChange={(event) => handleBillingAddressChange("taxNumber", event.target.value)}
-              disabled={!editing}
-            />
-            <input
-              type="email"
-              placeholder="Fatura e-postası"
-              value={form.billingAddress.email}
-              onChange={(event) => handleBillingAddressChange("email", event.target.value)}
-              disabled={!editing}
-            />
-            <input
-              placeholder="Fatura telefonu"
-              value={form.billingAddress.phone}
-              onChange={(event) => handleBillingAddressChange("phone", event.target.value)}
-              disabled={!editing}
-            />
+            <label className="stack-xs form-field" htmlFor={`${formId}-billing-full-name`}>
+              <span>Fatura ad soyad</span>
+              <input
+                id={`${formId}-billing-full-name`}
+                value={form.billingAddress.fullName}
+                onChange={(event) => handleBillingAddressChange("fullName", event.target.value)}
+                disabled={!editing}
+              />
+            </label>
+            <label className="stack-xs form-field" htmlFor={`${formId}-billing-company-name`}>
+              <span>Şirket adı</span>
+              <input
+                id={`${formId}-billing-company-name`}
+                value={form.billingAddress.companyName}
+                onChange={(event) => handleBillingAddressChange("companyName", event.target.value)}
+                disabled={!editing}
+              />
+            </label>
+            <label className="stack-xs form-field" htmlFor={`${formId}-billing-tax-office`}>
+              <span>Vergi dairesi</span>
+              <input
+                id={`${formId}-billing-tax-office`}
+                value={form.billingAddress.taxOffice}
+                onChange={(event) => handleBillingAddressChange("taxOffice", event.target.value)}
+                disabled={!editing}
+              />
+            </label>
+            <label className="stack-xs form-field" htmlFor={`${formId}-billing-tax-number`}>
+              <span>Vergi numarası</span>
+              <input
+                id={`${formId}-billing-tax-number`}
+                value={form.billingAddress.taxNumber}
+                onChange={(event) => handleBillingAddressChange("taxNumber", event.target.value)}
+                disabled={!editing}
+              />
+            </label>
+            <label className="stack-xs form-field" htmlFor={`${formId}-billing-email`}>
+              <span>Fatura e-postası</span>
+              <input
+                id={`${formId}-billing-email`}
+                type="email"
+                value={form.billingAddress.email}
+                onChange={(event) => handleBillingAddressChange("email", event.target.value)}
+                disabled={!editing}
+              />
+            </label>
+            <label className="stack-xs form-field" htmlFor={`${formId}-billing-phone`}>
+              <span>Fatura telefonu</span>
+              <input
+                id={`${formId}-billing-phone`}
+                value={form.billingAddress.phone}
+                onChange={(event) => handleBillingAddressChange("phone", event.target.value)}
+                disabled={!editing}
+                pattern={PHONE_INPUT_PATTERN}
+                title={PHONE_INPUT_TITLE}
+              />
+            </label>
           </div>
-          <textarea
-            placeholder="Fatura adresi"
-            value={form.billingAddress.billingAddress}
-            onChange={(event) => handleBillingAddressChange("billingAddress", event.target.value)}
-            disabled={!editing}
-          />
+          <label className="stack-xs form-field" htmlFor={`${formId}-billing-address`}>
+            <span>Fatura adresi</span>
+            <textarea
+              id={`${formId}-billing-address`}
+              value={form.billingAddress.billingAddress}
+              onChange={(event) => handleBillingAddressChange("billingAddress", event.target.value)}
+              disabled={!editing}
+            />
+          </label>
         </article>
 
-        {error && <p className="error-text">{error}</p>}
-        {successMessage && <p className="success-banner">{successMessage}</p>}
+        <FormMessage type="error" message={error} />
+        <FormMessage type="success" message={successMessage} />
 
         <div className="inline-actions">
           <button type="button" className="ghost-button" onClick={() => setEditing(true)}>
             Düzenle
           </button>
           <button type="submit" className="primary-button" disabled={!editing && !changingPassword}>
-            Kaydet
+            {changingPassword ? "Bilgileri ve şifreyi kaydet" : "Bilgileri Kaydet"}
           </button>
           <button type="button" className="ghost-button" onClick={handleCancel} disabled={!editing && !changingPassword}>
             İptal

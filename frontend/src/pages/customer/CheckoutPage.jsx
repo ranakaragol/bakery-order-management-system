@@ -1,13 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import api from "../../api/client";
 import DeliveryAddressFields from "../../components/DeliveryAddressFields";
+import EmptyState from "../../components/EmptyState";
+import FormMessage from "../../components/FormMessage";
+import LoadingState from "../../components/LoadingState";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
-import { getApiErrorMessage } from "../../utils/apiErrors";
+import { PHONE_INPUT_PATTERN, PHONE_INPUT_TITLE, getPhoneValidationMessage, isValidProfilePhone } from "../../utils/accountValidation";
+import { getApiErrorMessage, getApiFieldErrors, getApiValidationMessages } from "../../utils/apiErrors";
 import {
   buildCheckoutForm,
-  createEmptyCheckoutForm
+  createEmptyCheckoutForm,
+  getCheckoutValidationState
 } from "../../utils/deliveryAddressForms";
 import { mergeSiteContent } from "../../utils/fallbackContent";
 import { getRegionalOrderNotice } from "../../utils/orderMinimums";
@@ -19,11 +24,7 @@ import {
   formatQuantity
 } from "../../utils/formatters";
 import { DELIVERY_FEE, calculateOrderTotal } from "../../../../shared/commerce.js";
-import {
-  hasCompleteDeliveryAddress,
-  hasCompleteBillingAddress,
-  resolveUserDeliveryAddress
-} from "../../../../shared/profile.js";
+import { resolveUserDeliveryAddress } from "../../../../shared/profile.js";
 
 const CheckoutPage = () => {
   const outletContext = useOutletContext();
@@ -45,20 +46,42 @@ const CheckoutPage = () => {
   const navigate = useNavigate();
   const { authReady, user, refreshProfile } = useAuth();
   const { cart, subtotal, refreshCart } = useCart();
+  const formMessageRef = useRef(null);
+  const checkoutFormId = useId();
   const siteContent = mergeSiteContent(outletContext?.contactInfo);
   const paymentDetails = siteContent.paymentDetails;
   const [form, setForm] = useState(() => createEmptyCheckoutForm());
   const [checkoutReady, setCheckoutReady] = useState(() => Boolean(user));
   const [error, setError] = useState("");
-  const [requiresProfileCompletion, setRequiresProfileCompletion] = useState(false);
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const [isPreparingPayment, setIsPreparingPayment] = useState(false);
   const [deliveryAddressTouched, setDeliveryAddressTouched] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const deliveryAddressTouchedRef = useRef(deliveryAddressTouched);
+  const userRef = useRef(user);
   const orderNotice = getRegionalOrderNotice(
     form.deliveryAddress || resolveUserDeliveryAddress(user),
     subtotal,
     DELIVERY_FEE
   );
+  const checkoutValidation = useMemo(() => getCheckoutValidationState(form, user), [form, user]);
+  const billingMissingFieldsText = checkoutValidation.missingBillingFields.map((field) => field.label).join(", ");
+  const submitBlockedReason = orderNotice.isBlocked
+    ? `${orderNotice.warningMessage} ${orderNotice.shortfallMessage}`.trim()
+    : !checkoutValidation.isDeliveryAddressComplete
+      ? "Teslimat adresi için il, ilçe, mahalle ve açık adres bilgilerini tamamlayın."
+      : !checkoutValidation.isBillingAddressComplete
+        ? `Fatura bilgilerini tamamlayın: ${billingMissingFieldsText}.`
+        : "";
+
+  useEffect(() => {
+    deliveryAddressTouchedRef.current = deliveryAddressTouched;
+  }, [deliveryAddressTouched]);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
 
   useEffect(() => {
     if (!user) {
@@ -87,12 +110,12 @@ const CheckoutPage = () => {
         return;
       }
 
-      const nextUser = refreshedUser || user || null;
+      const nextUser = refreshedUser || userRef.current || null;
 
       if (nextUser) {
         setForm((current) =>
           buildCheckoutForm(nextUser, current, {
-            preserveDeliveryAddress: deliveryAddressTouched
+            preserveDeliveryAddress: deliveryAddressTouchedRef.current
           })
         );
       }
@@ -105,11 +128,11 @@ const CheckoutPage = () => {
     return () => {
       isCancelled = true;
     };
-  }, [authReady, user?.id]);
+  }, [authReady, refreshProfile, user?.id]);
 
   const validateCheckoutBeforePayment = async () => {
     setError("");
-    setRequiresProfileCompletion(false);
+    setFieldErrors({});
 
     if (orderNotice.isBlocked) {
       setError(`${orderNotice.warningMessage} ${orderNotice.shortfallMessage}`.trim());
@@ -117,11 +140,21 @@ const CheckoutPage = () => {
       return false;
     }
 
-    const refreshedUser = (await refreshProfile()) || user;
+    if (!checkoutValidation.isDeliveryAddressComplete) {
+      setError("Teslimat adresi için il, ilçe, mahalle ve açık adres bilgileri gereklidir.");
+      setShowPaymentOptions(false);
+      return false;
+    }
 
-    if (!hasCompleteBillingAddress(refreshedUser?.billingAddress)) {
-      setError("Sipariş verebilmek için önce fatura adresinizi tamamlamanız gerekiyor.");
-      setRequiresProfileCompletion(true);
+    if (!checkoutValidation.isBillingAddressComplete) {
+      setError(`Fatura bilgilerini tamamlayın: ${billingMissingFieldsText}.`);
+      setShowPaymentOptions(false);
+      return false;
+    }
+
+    if (!isValidProfilePhone(form.invoiceInfo.phone)) {
+      setError(getPhoneValidationMessage("Fatura telefonu"));
+      setShowPaymentOptions(false);
       return false;
     }
 
@@ -130,14 +163,17 @@ const CheckoutPage = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setIsPreparingPayment(true);
 
     const isValidCheckout = await validateCheckoutBeforePayment();
 
     if (!isValidCheckout) {
+      setIsPreparingPayment(false);
       return;
     }
 
     setShowPaymentOptions(true);
+    setIsPreparingPayment(false);
   };
 
   const handleConfirmPaymentMethod = async () => {
@@ -153,37 +189,55 @@ const CheckoutPage = () => {
     }
 
     setError("");
+    setFieldErrors({});
     setIsSubmittingOrder(true);
 
     try {
-      await api.post("/orders", form);
+      const { data } = await api.post("/orders", form);
       await refreshCart();
       setShowPaymentOptions(false);
-      navigate("/orders");
+      navigate("/orders", {
+        state: {
+          successMessage: data?.message || "Sipariş başarıyla oluşturuldu.",
+          orderNumber: data?.order?._id ? `#${String(data.order._id).slice(-6).toUpperCase()}` : ""
+        }
+      });
     } catch (requestError) {
-      const nextError = getApiErrorMessage(requestError, "Sipariş oluşturulamadı.");
+      setFieldErrors(getApiFieldErrors(requestError));
+      const validationMessages = getApiValidationMessages(requestError);
+      const nextError =
+        validationMessages.length > 1
+          ? validationMessages.join(" ")
+          : getApiErrorMessage(requestError, "Sipariş oluşturulamadı.");
       setError(nextError);
-      setRequiresProfileCompletion(
-        nextError === "Sipariş verebilmek için önce fatura adresinizi tamamlamanız gerekiyor."
-      );
+      window.requestAnimationFrame(() => {
+        formMessageRef.current?.focus();
+      });
     } finally {
       setIsSubmittingOrder(false);
     }
   };
 
   if (!cart?.items?.length) {
-    return <section className="panel">Ödeme için sepetinizde ürün bulunmalı.</section>;
+    return (
+      <EmptyState
+        title="Ödeme için sepetinizde ürün bulunmalı"
+        description="Önce ürün seçip sepetinizi oluşturduktan sonra sipariş adımına geçebilirsiniz."
+        actionLabel="Ürünleri İncele"
+        actionTo="/products"
+      />
+    );
   }
 
   if (!checkoutReady) {
-    return <section className="panel">Kayitli teslimat adresiniz yukleniyor...</section>;
+    return <LoadingState message="Teslimat ve fatura bilgileriniz hazırlanıyor..." />;
   }
 
   const totalAmount = calculateOrderTotal(subtotal, orderNotice.deliveryFee);
 
   return (
     <section className="checkout-layout">
-      <form className="panel stack-md" onSubmit={handleSubmit}>
+      <form className="panel stack-md" onSubmit={handleSubmit} aria-describedby={`${checkoutFormId}-messages`}>
         <div className="section-heading">
           <span className="eyebrow">Ödeme</span>
           <h1>Siparişi tamamla</h1>
@@ -198,103 +252,176 @@ const CheckoutPage = () => {
             setDeliveryAddressTouched(true);
             setForm((current) => ({ ...current, deliveryAddress }));
           }}
+          idPrefix={`${checkoutFormId}-delivery`}
           required
         />
 
-        <textarea
-          placeholder="Sipariş notu"
-          value={form.notes}
-          onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
-        />
+        <label className="stack-xs form-field" htmlFor={`${checkoutFormId}-notes`}>
+          <span>Sipariş notu</span>
+          <textarea
+            id={`${checkoutFormId}-notes`}
+            placeholder="Kapı kodu, teslimat saati gibi ek bilgiler"
+            value={form.notes}
+            onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
+          />
+        </label>
         <div className="form-grid">
-          <input
-            placeholder="Fatura ad soyad"
-            required
-            value={form.invoiceInfo.fullName}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                invoiceInfo: { ...current.invoiceInfo, fullName: event.target.value }
-              }))
-            }
-          />
-          <input
-            placeholder="Şirket adı"
-            required
-            value={form.invoiceInfo.companyName}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                invoiceInfo: { ...current.invoiceInfo, companyName: event.target.value }
-              }))
-            }
-          />
-          <input
-            placeholder="Vergi numarası"
-            required
-            value={form.invoiceInfo.taxNumber}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                invoiceInfo: { ...current.invoiceInfo, taxNumber: event.target.value }
-              }))
-            }
-          />
-          <input
-            placeholder="Vergi dairesi"
-            required
-            value={form.invoiceInfo.taxOffice}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                invoiceInfo: { ...current.invoiceInfo, taxOffice: event.target.value }
-              }))
-            }
-          />
-          <input
-            placeholder="Fatura e-postası"
-            type="email"
-            required
-            value={form.invoiceInfo.email}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                invoiceInfo: { ...current.invoiceInfo, email: event.target.value }
-              }))
-            }
-          />
-          <input
-            placeholder="Fatura telefonu"
-            required
-            value={form.invoiceInfo.phone}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                invoiceInfo: { ...current.invoiceInfo, phone: event.target.value }
-              }))
-            }
-          />
+          <label className="stack-xs form-field" htmlFor={`${checkoutFormId}-invoice-full-name`}>
+            <span>Fatura ad soyad *</span>
+            <input
+              id={`${checkoutFormId}-invoice-full-name`}
+              required
+              value={form.invoiceInfo.fullName}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  invoiceInfo: { ...current.invoiceInfo, fullName: event.target.value }
+                }))
+              }
+              aria-invalid={fieldErrors.fullName ? "true" : "false"}
+              aria-describedby={fieldErrors.fullName ? `${checkoutFormId}-invoice-full-name-error` : undefined}
+            />
+            {fieldErrors.fullName ? (
+              <small id={`${checkoutFormId}-invoice-full-name-error`} className="field-error-text">
+                {fieldErrors.fullName}
+              </small>
+            ) : null}
+          </label>
+          <label className="stack-xs form-field" htmlFor={`${checkoutFormId}-invoice-company-name`}>
+            <span>Şirket adı *</span>
+            <input
+              id={`${checkoutFormId}-invoice-company-name`}
+              required
+              value={form.invoiceInfo.companyName}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  invoiceInfo: { ...current.invoiceInfo, companyName: event.target.value }
+                }))
+              }
+              aria-invalid={fieldErrors.companyName ? "true" : "false"}
+              aria-describedby={fieldErrors.companyName ? `${checkoutFormId}-invoice-company-name-error` : undefined}
+            />
+            {fieldErrors.companyName ? (
+              <small id={`${checkoutFormId}-invoice-company-name-error`} className="field-error-text">
+                {fieldErrors.companyName}
+              </small>
+            ) : null}
+          </label>
+          <label className="stack-xs form-field" htmlFor={`${checkoutFormId}-invoice-tax-number`}>
+            <span>Vergi numarası *</span>
+            <input
+              id={`${checkoutFormId}-invoice-tax-number`}
+              required
+              value={form.invoiceInfo.taxNumber}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  invoiceInfo: { ...current.invoiceInfo, taxNumber: event.target.value }
+                }))
+              }
+              aria-invalid={fieldErrors.taxNumber ? "true" : "false"}
+              aria-describedby={fieldErrors.taxNumber ? `${checkoutFormId}-invoice-tax-number-error` : undefined}
+            />
+            {fieldErrors.taxNumber ? (
+              <small id={`${checkoutFormId}-invoice-tax-number-error`} className="field-error-text">
+                {fieldErrors.taxNumber}
+              </small>
+            ) : null}
+          </label>
+          <label className="stack-xs form-field" htmlFor={`${checkoutFormId}-invoice-tax-office`}>
+            <span>Vergi dairesi *</span>
+            <input
+              id={`${checkoutFormId}-invoice-tax-office`}
+              required
+              value={form.invoiceInfo.taxOffice}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  invoiceInfo: { ...current.invoiceInfo, taxOffice: event.target.value }
+                }))
+              }
+              aria-invalid={fieldErrors.taxOffice ? "true" : "false"}
+              aria-describedby={fieldErrors.taxOffice ? `${checkoutFormId}-invoice-tax-office-error` : undefined}
+            />
+            {fieldErrors.taxOffice ? (
+              <small id={`${checkoutFormId}-invoice-tax-office-error`} className="field-error-text">
+                {fieldErrors.taxOffice}
+              </small>
+            ) : null}
+          </label>
+          <label className="stack-xs form-field" htmlFor={`${checkoutFormId}-invoice-email`}>
+            <span>Fatura e-postası *</span>
+            <input
+              id={`${checkoutFormId}-invoice-email`}
+              type="email"
+              required
+              value={form.invoiceInfo.email}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  invoiceInfo: { ...current.invoiceInfo, email: event.target.value }
+                }))
+              }
+              aria-invalid={fieldErrors.email ? "true" : "false"}
+              aria-describedby={fieldErrors.email ? `${checkoutFormId}-invoice-email-error` : undefined}
+            />
+            {fieldErrors.email ? (
+              <small id={`${checkoutFormId}-invoice-email-error`} className="field-error-text">
+                {fieldErrors.email}
+              </small>
+            ) : null}
+          </label>
+          <label className="stack-xs form-field" htmlFor={`${checkoutFormId}-invoice-phone`}>
+            <span>Fatura telefonu *</span>
+            <input
+              id={`${checkoutFormId}-invoice-phone`}
+              required
+              value={form.invoiceInfo.phone}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  invoiceInfo: { ...current.invoiceInfo, phone: event.target.value }
+                }))
+              }
+              pattern={PHONE_INPUT_PATTERN}
+              title={PHONE_INPUT_TITLE}
+              aria-invalid={fieldErrors.phone ? "true" : "false"}
+              aria-describedby={fieldErrors.phone ? `${checkoutFormId}-invoice-phone-error` : undefined}
+            />
+            {fieldErrors.phone ? (
+              <small id={`${checkoutFormId}-invoice-phone-error`} className="field-error-text">
+                {fieldErrors.phone}
+              </small>
+            ) : null}
+          </label>
         </div>
-        <textarea
-          placeholder="Fatura adresi"
-          required
-          value={form.invoiceInfo.billingAddress}
-          onChange={(event) =>
-            setForm((current) => ({
-              ...current,
-              invoiceInfo: { ...current.invoiceInfo, billingAddress: event.target.value }
-            }))
-          }
-        />
-        {error && (
-          <div className="stack-sm">
-            <p className="error-text">{error}</p>
-            {requiresProfileCompletion && (
-              <button type="button" className="ghost-button" onClick={() => navigate("/profile")}>
-                Profili Tamamla
-              </button>
-            )}
-          </div>
+        <label className="stack-xs form-field" htmlFor={`${checkoutFormId}-invoice-address`}>
+          <span>Fatura adresi *</span>
+          <textarea
+            id={`${checkoutFormId}-invoice-address`}
+            required
+            value={form.invoiceInfo.billingAddress}
+            onChange={(event) =>
+              setForm((current) => ({
+                ...current,
+                invoiceInfo: { ...current.invoiceInfo, billingAddress: event.target.value }
+              }))
+            }
+            aria-invalid={fieldErrors.billingAddress ? "true" : "false"}
+            aria-describedby={fieldErrors.billingAddress ? `${checkoutFormId}-invoice-address-error` : undefined}
+          />
+          {fieldErrors.billingAddress ? (
+            <small id={`${checkoutFormId}-invoice-address-error`} className="field-error-text">
+              {fieldErrors.billingAddress}
+            </small>
+          ) : null}
+        </label>
+        <div id={`${checkoutFormId}-messages`} ref={formMessageRef} tabIndex={-1}>
+          <FormMessage type="error" message={error} />
+        </div>
+        {!checkoutValidation.isBillingAddressComplete && (
+          <p className="error-text">Fatura için eksik alanlar: {billingMissingFieldsText}.</p>
         )}
         {orderNotice.isBlocked && (
           <div className="stack-sm">
@@ -302,11 +429,12 @@ const CheckoutPage = () => {
             <p>{orderNotice.shortfallMessage}</p>
           </div>
         )}
-        {!hasCompleteDeliveryAddress(form.deliveryAddress) && (
+        {!checkoutValidation.isDeliveryAddressComplete && (
           <p className="error-text">Teslimat adresi için il, ilçe, mahalle ve açık adres bilgileri gereklidir.</p>
         )}
-        <button type="submit" className="primary-button" disabled={orderNotice.isBlocked}>
-          Ödemeyi Tamamla ve Sipariş Ver
+        {submitBlockedReason ? <p className="helper-text">{submitBlockedReason}</p> : null}
+        <button type="submit" className="primary-button" disabled={isPreparingPayment || isSubmittingOrder}>
+          {isPreparingPayment ? "Ödeme seçenekleri hazırlanıyor..." : "Ödemeyi Tamamla ve Sipariş Ver"}
         </button>
 
         {showPaymentOptions && (
@@ -321,15 +449,16 @@ const CheckoutPage = () => {
                 {paymentOptions.map((option) => (
                   <button
                     key={option.id}
-                    type="button"
-                    className={`payment-option-card ${
-                      form.paymentMethod === option.id ? "payment-option-card--active" : ""
-                    }`}
-                    onClick={() => setForm((current) => ({ ...current, paymentMethod: option.id }))}
-                    disabled={isSubmittingOrder}
-                  >
-                    <strong>{option.title}</strong>
-                    <span>{option.description}</span>
+                  type="button"
+                  className={`payment-option-card ${
+                    form.paymentMethod === option.id ? "payment-option-card--active" : ""
+                  }`}
+                  onClick={() => setForm((current) => ({ ...current, paymentMethod: option.id }))}
+                  disabled={isSubmittingOrder}
+                  aria-pressed={form.paymentMethod === option.id}
+                >
+                  <strong>{option.title}</strong>
+                  <span>{option.description}</span>
                     <small>{option.note}</small>
                   </button>
                 ))}
