@@ -10,3 +10,8 @@ export const connectDB = async () => {
   await mongoose.connect(mongoUri);
   console.log("MongoDB connection established.");
 };
+
+export const disconnectDB = async () => {
+  await mongoose.disconnect();
+  console.log("MongoDB connection closed.");
+};
