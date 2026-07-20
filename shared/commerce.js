@@ -2,6 +2,7 @@ const KG_UNIT = "kg";
 const KG_STEP = 0.1;
 const KG_MINIMUM = 0.1;
 const INTEGER_MINIMUM = 1;
+const CURRENCY_SCALE = 100;
 
 const resolveUnitValue = (valueOrProduct = "") => {
   if (typeof valueOrProduct === "string") {
@@ -16,6 +17,11 @@ export const DELIVERY_FEE = 0;
 export const roundQuantityTenth = (value = 0) => Math.round(Number(value || 0) * 10) / 10;
 
 export const roundCurrencyValue = (value = 0) => Math.round(Number(value || 0) * 100) / 100;
+
+export const toCurrencyMinorUnits = (value = 0) => Math.round(Number(value || 0) * CURRENCY_SCALE);
+
+export const fromCurrencyMinorUnits = (value = 0) =>
+  roundCurrencyValue(Number(value || 0) / CURRENCY_SCALE);
 
 export const sanitizeQuantity = (value = 0) => {
   if (typeof value === "number") {

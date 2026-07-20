@@ -117,9 +117,52 @@ describe("commerce validators", () => {
     expect(response.req.body.quantity).toBe(1.4);
   });
 
-  it("requires a valid payment method for checkout", async () => {
+  it("requires delivery province, district and a valid payment method for checkout", async () => {
     const validPayload = await runValidators(createOrderValidator, {
-      address: "Kadıköy teslimat adresi",
+      deliveryAddress: {
+        province: "istanbul",
+        district: "besiktas",
+        neighborhood: "Levent Mahallesi",
+        streetAddress: "Levent Mahallesi"
+      },
+      notes: "Kapıyı çalınız.",
+      paymentMethod: "bank_transfer",
+      invoiceInfo: {
+        fullName: "Rana Karagöl",
+        companyName: "Paşalı Patiserrie",
+        taxNumber: "1234567890",
+        taxOffice: "Kadıköy",
+        billingAddress: "İstanbul",
+        phone: "05321234567",
+        email: "rana@example.com"
+      }
+    });
+    const missingDistrictPayload = await runValidators(createOrderValidator, {
+      deliveryAddress: {
+        province: "istanbul",
+        district: "",
+        neighborhood: "Levent Mahallesi",
+        streetAddress: "Levent Mahallesi"
+      },
+      notes: "Kapıyı çalınız.",
+      paymentMethod: "bank_transfer",
+      invoiceInfo: {
+        fullName: "Rana Karagöl",
+        companyName: "Paşalı Patiserrie",
+        taxNumber: "1234567890",
+        taxOffice: "Kadıköy",
+        billingAddress: "İstanbul",
+        phone: "05321234567",
+        email: "rana@example.com"
+      }
+    });
+    const invalidDistrictPairPayload = await runValidators(createOrderValidator, {
+      deliveryAddress: {
+        province: "istanbul",
+        district: "izmit",
+        neighborhood: "Levent Mahallesi",
+        streetAddress: "Levent Mahallesi"
+      },
       notes: "Kapıyı çalınız.",
       paymentMethod: "bank_transfer",
       invoiceInfo: {
@@ -133,7 +176,12 @@ describe("commerce validators", () => {
       }
     });
     const invalidPayload = await runValidators(createOrderValidator, {
-      address: "Kadıköy teslimat adresi",
+      deliveryAddress: {
+        province: "istanbul",
+        district: "besiktas",
+        neighborhood: "Levent Mahallesi",
+        streetAddress: "Levent Mahallesi"
+      },
       notes: "Kapıyı çalınız.",
       paymentMethod: "card",
       invoiceInfo: {
@@ -146,8 +194,30 @@ describe("commerce validators", () => {
         email: "rana@example.com"
       }
     });
+    const invalidPhonePayload = await runValidators(createOrderValidator, {
+      deliveryAddress: {
+        province: "istanbul",
+        district: "besiktas",
+        neighborhood: "Levent Mahallesi",
+        streetAddress: "Levent Mahallesi"
+      },
+      notes: "Kapıyı çalınız.",
+      paymentMethod: "bank_transfer",
+      invoiceInfo: {
+        fullName: "Rana Karagöl",
+        companyName: "Paşalı Patiserrie",
+        taxNumber: "1234567890",
+        taxOffice: "Kadıköy",
+        billingAddress: "İstanbul",
+        phone: "12",
+        email: "rana@example.com"
+      }
+    });
 
     expect(validPayload.errors.isEmpty()).toBe(true);
+    expect(missingDistrictPayload.errors.isEmpty()).toBe(false);
+    expect(invalidDistrictPairPayload.errors.isEmpty()).toBe(false);
     expect(invalidPayload.errors.isEmpty()).toBe(false);
+    expect(invalidPhonePayload.errors.isEmpty()).toBe(false);
   });
 });

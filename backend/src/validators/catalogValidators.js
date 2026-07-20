@@ -2,8 +2,15 @@ import { body } from "express-validator";
 
 export const categoryValidator = [
   body("name").trim().notEmpty().withMessage("Kategori adı zorunludur."),
+  body("slug").optional({ values: "falsy" }).trim().notEmpty().withMessage("Kategori slug değeri boş olamaz."),
   body("description").trim().notEmpty().withMessage("Kategori açıklaması zorunludur."),
-  body("imageUrl").trim().notEmpty().withMessage("Kategori görsel yolu zorunludur.")
+  body("imageUrl").trim().notEmpty().withMessage("Kategori görsel yolu zorunludur."),
+  body("sortOrder")
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage("Kategori sıralaması sıfır veya daha büyük bir sayı olmalıdır."),
+  body("isActive").optional().isBoolean().withMessage("Kategori aktiflik durumu geçerli olmalıdır."),
+  body("isFeatured").optional().isBoolean().withMessage("Kategori öne çıkarma durumu geçerli olmalıdır.")
 ];
 
 export const productValidator = [

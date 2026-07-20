@@ -1,8 +1,25 @@
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
-import { billingAddressFields, createEmptyBillingAddress } from "../../../shared/profile.js";
+import {
+  billingAddressFields,
+  createEmptyBillingAddress,
+  createEmptyDeliveryAddress,
+  deliveryAddressFields
+} from "../../../shared/profile.js";
 
 const billingAddressShape = billingAddressFields.reduce(
+  (shape, field) => ({
+    ...shape,
+    [field]: {
+      type: String,
+      trim: true,
+      default: ""
+    }
+  }),
+  {}
+);
+
+const deliveryAddressShape = deliveryAddressFields.reduce(
   (shape, field) => ({
     ...shape,
     [field]: {
@@ -36,7 +53,7 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: true,
-      minlength: 6,
+      minlength: 8,
       select: false
     },
     phone: {
@@ -46,7 +63,7 @@ const userSchema = new mongoose.Schema(
     },
     address: {
       type: String,
-      required: true,
+      default: "",
       trim: true
     },
     role: {
@@ -61,6 +78,10 @@ const userSchema = new mongoose.Schema(
     billingAddress: {
       type: new mongoose.Schema(billingAddressShape, { _id: false }),
       default: createEmptyBillingAddress
+    },
+    deliveryAddress: {
+      type: new mongoose.Schema(deliveryAddressShape, { _id: false }),
+      default: createEmptyDeliveryAddress
     }
   },
   {

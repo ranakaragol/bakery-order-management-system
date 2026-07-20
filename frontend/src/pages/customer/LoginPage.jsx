@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import FormMessage from "../../components/FormMessage";
 import { useAuth } from "../../context/AuthContext";
 import { resolveNextPath } from "../../utils/authNavigation";
 import { getApiErrorMessage } from "../../utils/apiErrors";
 
 const LoginPage = () => {
+  const formId = useId().replace(/:/g, "");
+  const emailInputRef = useRef(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { login, loading } = useAuth();
@@ -29,6 +32,7 @@ const LoginPage = () => {
       navigate(resolvedNextPath);
     } catch (requestError) {
       setError(getApiErrorMessage(requestError, "Giriş yapılamadı."));
+      emailInputRef.current?.focus();
     }
   };
 
@@ -45,23 +49,36 @@ const LoginPage = () => {
             Sepete ürün eklemek için önce giriş yapmanız veya yeni hesap oluşturmanız gerekiyor.
           </div>
         )}
-        <input
-          type="email"
-          placeholder="E-posta"
-          required
-          value={form.email}
-          onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
-        />
-        <input
-          type="password"
-          placeholder="Şifre"
-          required
-          value={form.password}
-          onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
-        />
-        {error && <p className="error-text">{error}</p>}
+        <label className="stack-xs form-field" htmlFor={`${formId}-email`}>
+          <span>E-posta *</span>
+          <input
+            id={`${formId}-email`}
+            ref={emailInputRef}
+            type="email"
+            placeholder="ornek@pasali.com"
+            required
+            value={form.email}
+            onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? `${formId}-error` : undefined}
+          />
+        </label>
+        <label className="stack-xs form-field" htmlFor={`${formId}-password`}>
+          <span>Şifre *</span>
+          <input
+            id={`${formId}-password`}
+            type="password"
+            placeholder="Şifrenizi girin"
+            required
+            value={form.password}
+            onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? `${formId}-error` : undefined}
+          />
+        </label>
+        <FormMessage id={`${formId}-error`} type="error" message={error} />
         <button type="submit" className="primary-button" disabled={loading}>
-          Giriş Yap
+          {loading ? "Giriş yapılıyor..." : "Giriş Yap"}
         </button>
         <p>
           Hesabınız yok mu?{" "}

@@ -3,6 +3,8 @@ import Category from "../models/Category.js";
 import Product from "../models/Product.js";
 import { normalizeCatalogProduct } from "../../../shared/catalogProductRules.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { getVisibleCategoryIds, isProductCategoryVisible } from "../utils/catalogProductVisibility.js";
+import { sendError } from "../utils/apiResponses.js";
 import { ensureCatalogDataSynchronized } from "../utils/catalogSync.js";
 import { normalizeProductResponse } from "../utils/normalizeProductResponse.js";
 import { slugify } from "../utils/slugify.js";
@@ -26,7 +28,7 @@ const normalizeVariants = (variants = []) =>
             `${variant.rawPrice ?? ""}`.trim() !== "" &&
             Number.isFinite(variant.price)
         )
-        .map(({ rawPrice, ...variant }) => variant)
+        .map(({ rawPrice: _rawPrice, ...variant }) => variant)
     : [];
 
 const buildDisplayPrice = (price, unit, variants = []) => {
@@ -82,17 +84,16 @@ const normalizeProductPayload = (payload = {}, categoryName = "") => {
   };
 };
 
-export const getProducts = asyncHandler(async (req, res) => {
-  await ensureCatalogDataSynchronized();
-  const { category, search, featured, includeInactive } = req.query;
+const findProducts = async ({ category, search, featured, includeInactive = false } = {}) => {
   const query = {
     name: {
       $nin: legacyCakeSizeNames
     }
   };
 
-  if (includeInactive !== "true") {
+  if (!includeInactive) {
     query.isActive = { $ne: false };
+    query.category = { $in: await getVisibleCategoryIds() };
   }
 
   if (featured === "true") {
@@ -114,27 +115,49 @@ export const getProducts = asyncHandler(async (req, res) => {
     }
 
     const foundCategory = await Category.findOne({
-      $or: categoryFilters
+      $or: categoryFilters,
+      ...(includeInactive ? {} : { isActive: { $ne: false } })
     });
 
-    if (foundCategory) {
-      query.category = foundCategory._id;
+    if (!foundCategory) {
+      return [];
     }
+
+    query.category = foundCategory._id;
   }
 
-  const products = await Product.find(query)
-    .populate("category", "name slug")
+  return Product.find(query)
+    .populate("category", "name slug isActive")
     .sort({ featured: -1, name: 1 });
+};
+
+export const getProducts = asyncHandler(async (req, res) => {
+  await ensureCatalogDataSynchronized();
+  const { category, search, featured } = req.query;
+  const products = await findProducts({ category, search, featured });
+
+  res.json(products.map(normalizeProductResponse));
+});
+
+export const getAdminProducts = asyncHandler(async (req, res) => {
+  await ensureCatalogDataSynchronized();
+  const { category, search, featured } = req.query;
+  const products = await findProducts({ category, search, featured, includeInactive: true });
 
   res.json(products.map(normalizeProductResponse));
 });
 
 export const getProductById = asyncHandler(async (req, res) => {
   await ensureCatalogDataSynchronized();
-  const product = await Product.findById(req.params.id).populate("category", "name slug");
+  const product = await Product.findById(req.params.id).populate("category", "name slug isActive");
 
-  if (!product || legacyCakeSizeNames.includes(product.name)) {
-    return res.status(404).json({ message: "Ürün bulunamadı." });
+  if (
+    !product ||
+    legacyCakeSizeNames.includes(product.name) ||
+    product.isActive === false ||
+    !isProductCategoryVisible(product.category)
+  ) {
+    return sendError(res, 404, { message: "Ürün bulunamadı." });
   }
 
   res.json(normalizeProductResponse(product));
@@ -142,13 +165,13 @@ export const getProductById = asyncHandler(async (req, res) => {
 
 export const createProduct = asyncHandler(async (req, res) => {
   if (legacyCakeSizeNames.includes(req.body.name)) {
-    return res.status(400).json({ message: "Pasta boy seçenekleri ayrı ürün olarak oluşturulamaz." });
+    return sendError(res, 400, { message: "Pasta boy seçenekleri ayrı ürün olarak oluşturulamaz." });
   }
 
   const category = await Category.findById(req.body.category);
 
   if (!category) {
-    return res.status(400).json({ message: "Seçilen kategori bulunamadı." });
+    return sendError(res, 400, { message: "Seçilen kategori bulunamadı." });
   }
 
   const slug = req.body.slug ? slugify(req.body.slug) : slugify(req.body.name);
@@ -159,7 +182,7 @@ export const createProduct = asyncHandler(async (req, res) => {
     slug
   });
 
-  const populatedProduct = await Product.findById(product._id).populate("category", "name slug");
+  const populatedProduct = await Product.findById(product._id).populate("category", "name slug isActive");
 
   res.status(201).json({
     message: "Ürün başarıyla oluşturuldu.",
@@ -171,11 +194,11 @@ export const updateProduct = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id);
 
   if (!product) {
-    return res.status(404).json({ message: "Ürün bulunamadı." });
+    return sendError(res, 404, { message: "Ürün bulunamadı." });
   }
 
   if (req.body.name && legacyCakeSizeNames.includes(req.body.name)) {
-    return res.status(400).json({ message: "Pasta boy seçenekleri ayrı ürün olarak kaydedilemez." });
+    return sendError(res, 400, { message: "Pasta boy seçenekleri ayrı ürün olarak kaydedilemez." });
   }
 
   let resolvedCategory = null;
@@ -184,7 +207,7 @@ export const updateProduct = asyncHandler(async (req, res) => {
     resolvedCategory = await Category.findById(req.body.category).select("name");
 
     if (!resolvedCategory) {
-      return res.status(400).json({ message: "Seçilen kategori bulunamadı." });
+      return sendError(res, 400, { message: "Seçilen kategori bulunamadı." });
     }
   }
 
@@ -200,7 +223,7 @@ export const updateProduct = asyncHandler(async (req, res) => {
 
   await product.save();
 
-  const populatedProduct = await Product.findById(product._id).populate("category", "name slug");
+  const populatedProduct = await Product.findById(product._id).populate("category", "name slug isActive");
 
   res.json({
     message: "Ürün başarıyla güncellendi.",
@@ -212,7 +235,7 @@ export const deleteProduct = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id);
 
   if (!product) {
-    return res.status(404).json({ message: "Ürün bulunamadı." });
+    return sendError(res, 404, { message: "Ürün bulunamadı." });
   }
 
   await product.deleteOne();

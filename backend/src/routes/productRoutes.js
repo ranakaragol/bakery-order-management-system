@@ -2,6 +2,7 @@ import express from "express";
 import {
   createProduct,
   deleteProduct,
+  getAdminProducts,
   getProductById,
   getProducts,
   updateProduct
@@ -13,6 +14,7 @@ import { productValidator } from "../validators/catalogValidators.js";
 const router = express.Router();
 
 router.get("/", getProducts);
+router.get("/admin", protect, allowRoles("admin"), getAdminProducts);
 router.get("/:id", getProductById);
 router.post("/", protect, allowRoles("admin"), productValidator, validateRequest, createProduct);
 router.put("/:id", protect, allowRoles("admin"), productValidator, validateRequest, updateProduct);

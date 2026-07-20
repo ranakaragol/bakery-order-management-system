@@ -12,7 +12,7 @@ export const safelyDecodeUriComponent = (value = "") => {
 
   try {
     return decodeURIComponent(normalizedValue);
-  } catch (error) {
+  } catch {
     return normalizedValue;
   }
 };

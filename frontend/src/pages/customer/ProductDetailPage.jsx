@@ -1,8 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { publicApi } from "../../api/client";
+import EmptyState from "../../components/EmptyState";
+import ErrorState from "../../components/ErrorState";
+import FormMessage from "../../components/FormMessage";
+import LoadingState from "../../components/LoadingState";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
+import { getApiErrorMessage } from "../../utils/apiErrors";
 import { fallbackProducts } from "../../utils/fallbackContent";
 import {
   canOrderProduct,
@@ -31,27 +36,55 @@ const ProductDetailPage = () => {
   const { user } = useAuth();
   const { addToCart } = useCart();
   const navigate = useNavigate();
+  const quantityOutputId = useId();
   const [product, setProduct] = useState(null);
+  const [pageStatus, setPageStatus] = useState("loading");
+  const [pageError, setPageError] = useState("");
   const [quantity, setQuantity] = useState(getDefaultQuantity());
   const [selectedVariantId, setSelectedVariantId] = useState("");
   const [cartError, setCartError] = useState("");
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
 
   useEffect(() => {
-    publicApi
-      .get(`/products/${id}`)
-      .then(({ data }) => {
+    let cancelled = false;
+
+    const loadProduct = async () => {
+      setPageStatus("loading");
+      setPageError("");
+
+      try {
+        const { data } = await publicApi.get(`/products/${id}`);
+
+        if (cancelled) {
+          return;
+        }
+
         setProduct(data);
-        setQuantity(getDefaultQuantity());
-        setSelectedVariantId("");
-        setCartError("");
-      })
-      .catch(() => {
-        const fallbackProduct = fallbackProducts.find((item) => item._id === id);
-        setProduct(fallbackProduct || null);
-        setQuantity(getDefaultQuantity());
-        setSelectedVariantId("");
-        setCartError("");
-      });
+        setPageStatus("success");
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        const fallbackProduct = fallbackProducts.find((item) => item._id === id) || null;
+
+        setProduct(fallbackProduct);
+        setPageStatus(fallbackProduct ? "success" : "error");
+        setPageError(getApiErrorMessage(error, "Ürün bilgileri şu anda yüklenemiyor."));
+      } finally {
+        if (!cancelled) {
+          setQuantity(getDefaultQuantity());
+          setSelectedVariantId("");
+          setCartError("");
+        }
+      }
+    };
+
+    loadProduct();
+
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   const handleAddToCart = async () => {
@@ -77,10 +110,13 @@ const ProductDetailPage = () => {
     }
 
     try {
+      setIsAddingToCart(true);
       await addToCart(product._id, normalizeQuantity(sanitizedQuantity, product.unit), selectedVariantId);
       navigate("/cart");
     } catch (error) {
-      setCartError("Ürün sepete eklenemedi.");
+      setCartError(getApiErrorMessage(error, "Ürün sepete eklenemedi."));
+    } finally {
+      setIsAddingToCart(false);
     }
   };
 
@@ -98,8 +134,23 @@ const ProductDetailPage = () => {
       ? formatLineTotal(product.price, quantity)
       : null;
 
+  if (pageStatus === "loading") {
+    return <LoadingState message="Ürün bilgileri yükleniyor..." />;
+  }
+
+  if (pageStatus === "error" && !product) {
+    return <ErrorState message={pageError || "Ürün bilgileri yüklenemedi."} onRetry={() => window.location.reload()} />;
+  }
+
   if (!product) {
-    return <div className="panel">Ürün yükleniyor...</div>;
+    return (
+      <EmptyState
+        title="Ürün bulunamadı"
+        description="Aradığınız ürün artık katalogda olmayabilir."
+        actionLabel="Ürünlere Dön"
+        actionTo="/products"
+      />
+    );
   }
 
   return (
@@ -109,6 +160,7 @@ const ProductDetailPage = () => {
         <span className="tag">{product.category?.name}</span>
         <h1>{product.name}</h1>
         <p>{product.description}</p>
+        <FormMessage type="error" message={pageStatus === "success" ? "" : pageError} />
         <div className="detail-layout__facts">
           <strong>{resolvedPrice}</strong>
           <span>{stockLabels[product.stockStatus]}</span>
@@ -168,17 +220,18 @@ const ProductDetailPage = () => {
 
         {user?.role !== "admin" && canOrderProduct(product) ? (
           <div className="quantity-box">
-            <label htmlFor="quantity-display">{product.unit === "Adet" ? "Adet" : "Miktar"}</label>
+            <label htmlFor={quantityOutputId}>{product.unit === "Adet" ? "Adet" : "Miktar"}</label>
             <div className="quantity-stepper">
               <button
                 type="button"
                 className="ghost-button"
                 aria-label={`${product.name} miktarını azalt`}
                 onClick={() => setQuantity((current) => decrementQuantity(current, product.unit))}
+                disabled={isAddingToCart}
               >
                 -
               </button>
-              <output id="quantity-display" className="quantity-stepper__value" aria-live="polite">
+              <output id={quantityOutputId} className="quantity-stepper__value" aria-live="polite">
                 {formatQuantity(quantity, resolvedUnit)}
               </output>
               <button
@@ -186,6 +239,7 @@ const ProductDetailPage = () => {
                 className="ghost-button"
                 aria-label={`${product.name} miktarını artır`}
                 onClick={() => setQuantity((current) => incrementQuantity(current, product.unit))}
+                disabled={isAddingToCart}
               >
                 +
               </button>
@@ -216,12 +270,16 @@ const ProductDetailPage = () => {
               type="button"
               className="primary-button"
               onClick={handleAddToCart}
-              disabled={requiresVariantSelection}
+              disabled={requiresVariantSelection || isAddingToCart}
             >
-              {hasProductVariants(product) ? "Boy Seçerek Sepete Ekle" : "Sepete Ekle"}
+              {isAddingToCart
+                ? "Sepete ekleniyor..."
+                : hasProductVariants(product)
+                  ? "Boy Seçerek Sepete Ekle"
+                  : "Sepete Ekle"}
             </button>
             {requiresVariantSelection && <p className="helper-text">Sepete eklemek için önce pasta boyunu seçin.</p>}
-            {cartError && <p className="error-text">{cartError}</p>}
+            <FormMessage type="error" message={cartError} />
             {!user && (
               <p className="helper-text">
                 Sepete devam etmek için giriş veya kayıt adımına yönlendirilirsiniz.

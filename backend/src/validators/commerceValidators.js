@@ -1,5 +1,7 @@
 import { body } from "express-validator";
 import { sanitizeQuantity } from "../../../shared/commerce.js";
+import { isValidProvinceDistrictPair, normalizeProvinceValue } from "../../../shared/deliveryZones.js";
+import { billingAddressFieldLabels, billingAddressFields, isValidProfilePhone } from "../../../shared/profile.js";
 
 export const addToCartValidator = [
   body("productId").trim().notEmpty().withMessage("Ürün kimliği zorunludur."),
@@ -18,42 +20,49 @@ export const updateCartItemValidator = [
     .withMessage("Miktar en az 0.1 olmalıdır.")
 ];
 
+const invoiceInfoFieldValidators = billingAddressFields.map((field) => {
+  const validator = body(`invoiceInfo.${field}`)
+    .trim()
+    .notEmpty()
+    .withMessage(`${billingAddressFieldLabels[field] || field} zorunludur.`);
+
+  if (field === "email") {
+    return validator.isEmail().withMessage("Geçerli bir fatura e-postası zorunludur.");
+  }
+
+  if (field === "phone") {
+    return validator
+      .custom((value) => isValidProfilePhone(value))
+      .withMessage("Geçerli bir fatura telefonu zorunludur.");
+  }
+
+  return validator;
+});
+
 export const createOrderValidator = [
-  body("address").trim().notEmpty().withMessage("Teslimat adresi zorunludur."),
+  body("deliveryAddress.province").trim().notEmpty().withMessage("Teslimat ili zorunludur."),
+  body("deliveryAddress.district").trim().notEmpty().withMessage("Teslimat ilçesi zorunludur."),
+  body("deliveryAddress.neighborhood").trim().notEmpty().withMessage("Teslimat mahallesi zorunludur."),
+  body("deliveryAddress.streetAddress").trim().notEmpty().withMessage("Teslimat açık adresi zorunludur."),
+  body("deliveryAddress.addressTitle").optional({ values: "falsy" }).trim(),
+  body("deliveryAddress.postalCode").optional({ values: "falsy" }).trim(),
+  body("deliveryAddress")
+    .custom((value = {}) => {
+      const province = normalizeProvinceValue(value?.province);
+
+      if (!province || !value?.district) {
+        return true;
+      }
+
+      return isValidProvinceDistrictPair(province, value.district);
+    })
+    .withMessage("Teslimat ili ve ilçesi geçersiz veya birbiriyle uyumsuz."),
   body("notes").optional().isString().withMessage("Sipariş notu metin olmalıdır."),
   body("paymentMethod")
     .trim()
     .isIn(["bank_transfer", "cash_on_delivery"])
     .withMessage("Geçerli bir ödeme yöntemi seçilmelidir."),
-  body("invoiceInfo.fullName")
-    .trim()
-    .notEmpty()
-    .withMessage("Fatura ad soyad zorunludur."),
-  body("invoiceInfo.companyName")
-    .trim()
-    .notEmpty()
-    .withMessage("Şirket adı zorunludur."),
-  body("invoiceInfo.taxNumber")
-    .trim()
-    .notEmpty()
-    .withMessage("Vergi numarası zorunludur."),
-  body("invoiceInfo.taxOffice")
-    .trim()
-    .notEmpty()
-    .withMessage("Vergi dairesi zorunludur."),
-  body("invoiceInfo.billingAddress")
-    .trim()
-    .notEmpty()
-    .withMessage("Fatura adresi zorunludur."),
-  body("invoiceInfo.phone")
-    .trim()
-    .notEmpty()
-    .withMessage("Fatura telefonu zorunludur."),
-  body("invoiceInfo.email")
-    .trim()
-    .notEmpty()
-    .isEmail()
-    .withMessage("Geçerli bir fatura e-postası zorunludur.")
+  ...invoiceInfoFieldValidators
 ];
 
 export const statusValidator = [

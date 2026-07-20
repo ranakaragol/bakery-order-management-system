@@ -1,22 +1,59 @@
 import axios from "axios";
+import { CSRF_HEADER_NAME, DEFAULT_CSRF_COOKIE_NAME, SAFE_HTTP_METHODS } from "../../../shared/auth.js";
+import { readCookieValue } from "../utils/cookieHelpers.js";
 
-const baseURL = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+const env = import.meta.env || {};
+const safeMethods = new Set(SAFE_HTTP_METHODS.map((method) => method.toLowerCase()));
+const csrfCookieName = env.VITE_CSRF_COOKIE_NAME || DEFAULT_CSRF_COOKIE_NAME;
 
-const api = axios.create({ baseURL });
+export const resolveApiBaseUrl = (envBaseUrl, locationLike = globalThis.location) => {
+  if (envBaseUrl) {
+    return envBaseUrl;
+  }
+
+  const protocol = locationLike?.protocol || "http:";
+  const hostname = locationLike?.hostname || "127.0.0.1";
+
+  return `${protocol}//${hostname}:5001/api`;
+};
+
+const baseURL = resolveApiBaseUrl(env.VITE_API_URL);
+
+const api = axios.create({
+  baseURL,
+  withCredentials: true
+});
 export const publicApi = axios.create({ baseURL });
 
+let unauthorizedHandler = null;
+
+export const setUnauthorizedHandler = (handler) => {
+  unauthorizedHandler = handler;
+};
+
 api.interceptors.request.use((config) => {
-  const rawSession = localStorage.getItem("bakery_auth");
+  const method = String(config.method || "get").toLowerCase();
 
-  if (rawSession) {
-    const session = JSON.parse(rawSession);
+  if (!safeMethods.has(method)) {
+    const csrfToken = readCookieValue(csrfCookieName);
 
-    if (session?.token) {
-      config.headers.Authorization = `Bearer ${session.token}`;
+    if (csrfToken) {
+      config.headers[CSRF_HEADER_NAME] = csrfToken;
     }
   }
 
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error?.response?.status === 401 && typeof unauthorizedHandler === "function") {
+      unauthorizedHandler(error);
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 export default api;

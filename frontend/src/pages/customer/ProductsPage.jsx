@@ -1,10 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { publicApi } from "../../api/client";
 import CategoryCard from "../../components/CategoryCard";
+import EmptyState from "../../components/EmptyState";
+import ErrorState from "../../components/ErrorState";
+import FormMessage from "../../components/FormMessage";
+import LoadingState from "../../components/LoadingState";
 import ProductCard from "../../components/ProductCard";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
+import { getApiErrorMessage } from "../../utils/apiErrors";
 import { fallbackCategories, fallbackProducts } from "../../utils/fallbackContent";
 import {
   areCategoriesEquivalent,
@@ -27,6 +32,8 @@ const ProductsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [catalog, setCatalog] = useState(fallbackCatalog);
   const [status, setStatus] = useState(() => (fallbackProducts.length ? "loading" : "empty"));
+  const [errorMessage, setErrorMessage] = useState("");
+  const [cartMessage, setCartMessage] = useState("");
   const [searchInput, setSearchInput] = useState(() => safelyDecodeUriComponent(searchParams.get("search") || ""));
   const productResultsRef = useRef(null);
   const lastScrolledCategoryRef = useRef("");
@@ -77,41 +84,35 @@ const ProductsPage = () => {
     return () => window.cancelAnimationFrame(frameId);
   }, [activeCategory, categoryQuery, status]);
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadCatalog = useCallback(async () => {
+    setStatus((previousStatus) => (previousStatus === "success" || previousStatus === "refreshing" ? "refreshing" : "loading"));
+    setErrorMessage("");
 
-    const syncCatalog = async () => {
-      try {
-        const [categoriesResponse, productsResponse] = await Promise.all([
-          publicApi.get("/categories"),
-          publicApi.get("/products")
-        ]);
+    try {
+      const [categoriesResponse, productsResponse] = await Promise.all([
+        publicApi.get("/categories"),
+        publicApi.get("/products")
+      ]);
 
-        if (!cancelled) {
-          const nextCatalog = resolveCatalogSnapshot({
-            apiCategories: categoriesResponse.data,
-            apiProducts: productsResponse.data,
-            fallbackCategories,
-            fallbackProducts
-          });
+      const nextCatalog = resolveCatalogSnapshot({
+        apiCategories: categoriesResponse.data,
+        apiProducts: productsResponse.data,
+        fallbackCategories,
+        fallbackProducts
+      });
 
-          setCatalog(nextCatalog);
-          setStatus(nextCatalog.products.length ? "success" : "empty");
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setCatalog(fallbackCatalog);
-          setStatus(fallbackProducts.length ? "success" : "error");
-        }
-      }
-    };
-
-    syncCatalog();
-
-    return () => {
-      cancelled = true;
-    };
+      setCatalog(nextCatalog);
+      setStatus(nextCatalog.products.length ? "success" : "empty");
+    } catch (error) {
+      setCatalog(fallbackCatalog);
+      setErrorMessage(getApiErrorMessage(error, "Ürünler şu anda görüntülenemiyor."));
+      setStatus(fallbackProducts.length ? "success" : "error");
+    }
   }, []);
+
+  useEffect(() => {
+    void loadCatalog();
+  }, [loadCatalog]);
 
   const handleSearch = (event) => {
     event.preventDefault();
@@ -153,6 +154,8 @@ const ProductsPage = () => {
   };
 
   const handleAddToCart = async (product) => {
+    setCartMessage("");
+
     if (!user) {
       navigate(`/login?next=/products/${product._id}&intent=cart`);
       return;
@@ -166,7 +169,7 @@ const ProductsPage = () => {
       await addToCart(product._id);
       navigate("/cart");
     } catch (error) {
-      // Redirect only after the cart API confirms success.
+      setCartMessage(getApiErrorMessage(error, "Ürün sepete eklenemedi."));
     }
   };
 
@@ -178,17 +181,23 @@ const ProductsPage = () => {
         <p>Kategoriye göre filtreleyin ve dilediğiniz ürünleri seçin.</p>
       </section>
 
-      <form className="search-panel" onSubmit={handleSearch}>
-        <input
-          type="search"
-          placeholder="Ürün ara"
-          value={searchInput}
-          onChange={(event) => setSearchInput(event.target.value)}
-        />
+      <form className="search-panel" onSubmit={handleSearch} aria-label="Ürün arama formu">
+        <label className="stack-xs form-field" htmlFor="product-search">
+          <span>Ürün ara</span>
+          <input
+            id="product-search"
+            type="search"
+            placeholder="Örn. profiterol"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+          />
+        </label>
         <button type="submit" className="primary-button">
           Ara
         </button>
       </form>
+
+      <FormMessage type="error" message={cartMessage} />
 
       <section className="content-section">
         <div className="section-heading section-heading--ruled">
@@ -210,7 +219,9 @@ const ProductsPage = () => {
 
       <div className="section-divider" aria-hidden="true" />
 
-      {status === "loading" && <div className="panel">Ürünler yükleniyor...</div>}
+      {(status === "loading" || status === "refreshing") && (
+        <LoadingState message={status === "refreshing" ? "Ürünler yenileniyor..." : "Ürünler yükleniyor..."} />
+      )}
 
       {visibleProducts.length ? (
         <section ref={productResultsRef} className="content-section">
@@ -230,12 +241,18 @@ const ProductsPage = () => {
             ))}
           </div>
         </section>
-      ) : status === "error" || !catalog.products.length ? (
-        <div className="panel">Ürünler şu anda görüntülenemiyor.</div>
+      ) : status === "error" ? (
+        <ErrorState message={errorMessage || "Ürünler şu anda görüntülenemiyor."} onRetry={loadCatalog} />
+      ) : activeCategory && !visibleProducts.length && catalog.products.length ? (
+        <EmptyState title={`${activeCategory.name} kategorisinde ürün bulunamadı`} description="Farklı bir kategori seçerek kataloğa devam edebilirsiniz." compact />
+      ) : categoryQuery && !activeCategory ? (
+        <EmptyState title="Kategori bulunamadı" description="Seçtiğiniz kategori artık mevcut olmayabilir. Tüm ürünlere dönebilirsiniz." actionLabel="Tüm Ürünler" actionTo="/products" />
+      ) : !catalog.products.length ? (
+        <EmptyState title="Ürün bulunamadı" description="Katalog şu anda boş görünüyor." />
       ) : activeCategory ? (
-        <div className="panel">Bu kategoride henüz ürün bulunmuyor.</div>
+        <EmptyState title="Bu kategoride henüz ürün bulunmuyor" description="Diğer kategorileri inceleyebilirsiniz." compact />
       ) : (
-        <div className="panel">Aradığınız kriterlere uygun ürün bulunamadı.</div>
+        <EmptyState title="Aradığınız kriterlere uygun ürün bulunamadı" description="Arama ifadenizi veya kategori seçiminizi güncelleyebilirsiniz." compact />
       )}
     </div>
   );

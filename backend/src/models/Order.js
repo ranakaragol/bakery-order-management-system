@@ -89,6 +89,48 @@ const orderSchema = new mongoose.Schema(
       type: String,
       required: true
     },
+    deliveryAddressSnapshot: {
+      addressTitle: {
+        type: String,
+        default: "",
+        trim: true
+      },
+      province: {
+        type: String,
+        required: true,
+        trim: true
+      },
+      district: {
+        type: String,
+        required: true,
+        trim: true
+      },
+      neighborhood: {
+        type: String,
+        required: true,
+        trim: true
+      },
+      streetAddress: {
+        type: String,
+        required: true,
+        trim: true
+      },
+      postalCode: {
+        type: String,
+        default: "",
+        trim: true
+      },
+      formattedAddress: {
+        type: String,
+        required: true,
+        trim: true
+      },
+      region: {
+        type: String,
+        required: true,
+        trim: true
+      }
+    },
     notes: {
       type: String,
       trim: true,

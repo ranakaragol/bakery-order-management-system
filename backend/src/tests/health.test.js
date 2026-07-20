@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { getHealth } from "../controllers/healthController.js";
+import backendPackage from "../../package.json" with { type: "json" };
 
 describe("GET /api/health", () => {
   it("returns backend health status", async () => {
@@ -8,9 +9,15 @@ describe("GET /api/health", () => {
 
     getHealth({}, response);
 
-    expect(json).toHaveBeenCalledWith({
-      status: "ok",
-      service: "bakery-backend"
-    });
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "ok",
+        service: "bakery-backend",
+        version: backendPackage.version,
+        runtime: expect.objectContaining({
+          node: process.version
+        })
+      })
+    );
   });
 });

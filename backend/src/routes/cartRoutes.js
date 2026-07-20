@@ -6,13 +6,14 @@ import {
   removeCartItem,
   updateCartItem
 } from "../controllers/cartController.js";
-import { protect } from "../middleware/authMiddleware.js";
+import { allowRoles, protect } from "../middleware/authMiddleware.js";
+import { csrfProtection } from "../middleware/csrfMiddleware.js";
 import { validateRequest } from "../middleware/validateRequest.js";
 import { addToCartValidator, updateCartItemValidator } from "../validators/commerceValidators.js";
 
 const router = express.Router();
 
-router.use(protect);
+router.use(protect, csrfProtection, allowRoles("customer"));
 
 router.get("/", getCart);
 router.post("/items", addToCartValidator, validateRequest, addToCart);

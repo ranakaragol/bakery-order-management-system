@@ -44,6 +44,23 @@ button {
   cursor: pointer;
 }
 
+button:disabled,
+input:disabled,
+textarea:disabled,
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 3px solid rgba(143, 33, 58, 0.28);
+  outline-offset: 2px;
+}
+
 img {
   display: block;
   width: 100%;
@@ -202,6 +219,11 @@ h3 {
 .stack-sm {
   display: grid;
   gap: 0.9rem;
+}
+
+.stack-xs {
+  display: grid;
+  gap: 0.4rem;
 }
 
 .hero-panel,
@@ -526,6 +548,13 @@ select {
   color: inherit;
 }
 
+input[aria-invalid="true"],
+textarea[aria-invalid="true"],
+select[aria-invalid="true"] {
+  border-color: rgba(171, 39, 39, 0.42);
+  box-shadow: 0 0 0 3px rgba(171, 39, 39, 0.08);
+}
+
 textarea {
   min-height: 120px;
   resize: vertical;
@@ -606,6 +635,43 @@ textarea {
   margin: 0;
   color: var(--text-muted);
   font-size: 0.94rem;
+}
+
+.form-field {
+  min-width: 0;
+}
+
+.form-field > span {
+  color: var(--accent-dark);
+  font-weight: 600;
+}
+
+.field-error-text {
+  color: #8f1f1f;
+  font-size: 0.88rem;
+}
+
+.status-card {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem 1.1rem;
+  border-radius: 1.2rem;
+  background: rgba(255, 251, 245, 0.96);
+  border: 1px solid var(--border);
+}
+
+.status-card h2,
+.status-card p {
+  margin: 0;
+}
+
+.status-card--compact {
+  padding: 0.9rem 1rem;
+}
+
+.status-card--error {
+  border-color: rgba(171, 39, 39, 0.24);
+  background: rgba(255, 245, 245, 0.96);
 }
 
 .helper-text--panel {
@@ -990,6 +1056,48 @@ textarea {
 .admin-product-option--active {
   border-color: rgba(93, 15, 32, 0.3);
   background: rgba(122, 31, 51, 0.08);
+}
+
+.admin-category-list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.admin-category-row {
+  display: grid;
+  gap: 0.8rem;
+  padding: 1rem 1.05rem;
+  border-radius: 1.2rem;
+  border: 1px solid var(--border);
+  background: rgba(255, 252, 247, 0.92);
+}
+
+.admin-category-row p {
+  margin: 0;
+}
+
+.admin-category-row__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.admin-form-grid,
+.admin-toggle-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.admin-field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.admin-field span {
+  font-weight: 600;
+  color: var(--accent-dark);
 }
 
 .tab-button {
